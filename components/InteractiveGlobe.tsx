@@ -6,25 +6,29 @@ import { geoCentroid } from 'd3-geo';
 import { playClickSound } from '../utils/audio';
 import * as THREE from 'three';
 
+const trussGeo = new THREE.CylinderGeometry(0.3, 0.3, 8, 8);
+const metalMat = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 100 });
+const solarPanelGeo = new THREE.BoxGeometry(2, 0.1, 5);
+const panelMat = new THREE.MeshPhongMaterial({ 
+  color: 0x0044ff, 
+  shininess: 150,
+  emissive: 0x001144, 
+  side: THREE.DoubleSide 
+});
+const moduleGeo = new THREE.CylinderGeometry(0.6, 0.6, 3, 16);
+const whiteMat = new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 50 });
+const redLightGeo = new THREE.SphereGeometry(0.4, 8, 8);
+const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
 export function createISSModel(): THREE.Group {
   const iss = new THREE.Group();
 
   // Main truss (long cylinder)
-  const trussGeo = new THREE.CylinderGeometry(0.3, 0.3, 8, 8);
-  const metalMat = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 100 });
   const truss = new THREE.Mesh(trussGeo, metalMat);
   truss.rotation.z = Math.PI / 2;
   iss.add(truss);
 
   // Solar arrays (4 sets of flat boxes)
-  const solarPanelGeo = new THREE.BoxGeometry(2, 0.1, 5);
-  const panelMat = new THREE.MeshPhongMaterial({ 
-    color: 0x0044ff, 
-    shininess: 150,
-    emissive: 0x001144, 
-    side: THREE.DoubleSide 
-  });
-
   const positions = [
     [-2.5, 0, 2],
     [-2.5, 0, -2],
@@ -39,9 +43,6 @@ export function createISSModel(): THREE.Group {
   });
 
   // Modules (central living quarters)
-  const moduleGeo = new THREE.CylinderGeometry(0.6, 0.6, 3, 16);
-  const whiteMat = new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 50 });
-  
   const mainModule = new THREE.Mesh(moduleGeo, whiteMat);
   iss.add(mainModule);
 
@@ -50,8 +51,6 @@ export function createISSModel(): THREE.Group {
   iss.add(crossModule);
 
   // Add a pulsing red beacon light (we can just make it static bright red)
-  const redLightGeo = new THREE.SphereGeometry(0.4, 8, 8);
-  const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
   const redLight = new THREE.Mesh(redLightGeo, redLightMat);
   redLight.position.y = 1.7;
   iss.add(redLight);
@@ -84,7 +83,8 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
           f.properties._lat = lat;
         });
         setCountries(data);
-      });
+      })
+      .catch(() => {});
   }, []);
 
   const isCountry = (d: any) => d && d.properties && d.properties.ADMIN;
@@ -137,16 +137,18 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
     let active = true;
     const pathHistory: {lat: number, lng: number}[] = [];
     
-    const fetchISS = () => {
-      fetch('https://api.wheretheiss.at/v1/satellites/25544')
-        .then(res => res.json())
-        .then(data => {
-          if (!active) return;
-          pathHistory.push({ lat: data.latitude, lng: data.longitude });
-          if (pathHistory.length > 300) pathHistory.shift(); // keep trail
-          setIssData({ lat: data.latitude, lng: data.longitude, path: [...pathHistory] });
-        })
-        .catch(console.error);
+    const fetchISS = async () => {
+      try {
+        const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        pathHistory.push({ lat: data.latitude, lng: data.longitude });
+        if (pathHistory.length > 300) pathHistory.shift(); // keep trail
+        setIssData({ lat: data.latitude, lng: data.longitude, path: [...pathHistory] });
+      } catch (err) {
+        console.error(err);
+      }
     };
     
     fetchISS();
@@ -168,7 +170,7 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
         renderer.setClearColor(0x000000, 0);
       }
     }
-  });
+  }, []);
 
   return (
     <div 

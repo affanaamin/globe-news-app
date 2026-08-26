@@ -1,8 +1,18 @@
-﻿"use client";
+"use client";
+
+let activeUtterances: SpeechSynthesisUtterance[] = [];
+let cachedVoices: SpeechSynthesisVoice[] = [];
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+  };
+}
 
 export const stopBroadcast = () => {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
+    activeUtterances = [];
   }
 };
 
@@ -15,8 +25,13 @@ export const broadcastNews = (
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   
   window.speechSynthesis.cancel(); // Stop any ongoing speech
+  activeUtterances = [];
 
-  const voices = window.speechSynthesis.getVoices();
+  let voices = cachedVoices;
+  if (voices.length === 0) {
+    voices = window.speechSynthesis.getVoices();
+    cachedVoices = voices;
+  }
   
   // Strict prioritization for the most human-sounding neural/cloud voices
   const selectedVoice = 
@@ -41,7 +56,7 @@ export const broadcastNews = (
   headlines.forEach((text, i) => {
     // Clean up text for better reading (remove URLs, weird chars)
     let cleanText = text.replace(/https?:\/\/[^\s]+/g, 'link removed')
-                        .replace(/[^\w\s.,?!-]/g, '');
+                        .replace(/[^\p{L}\p{N}\s.,?!-]/gu, '');
 
     // Add a pause before reading the headline number
     const numUtterance = new SpeechSynthesisUtterance(`Headline ${i + 1}.`);
@@ -51,7 +66,7 @@ export const broadcastNews = (
     utterances.push(numUtterance);
 
     // Split text into sentences for more natural breathing pauses
-    const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+    const sentences = cleanText.replace(/([.!?])\s+/g, '$1|||').split('|||');
     
     sentences.forEach((sentence, sIdx) => {
       const utterance = new SpeechSynthesisUtterance(sentence.trim());
@@ -66,13 +81,20 @@ export const broadcastNews = (
   // Track start and end state
   if (utterances.length > 0) {
     utterances[0].onstart = () => { if (onStart) onStart(); };
-    utterances[utterances.length - 1].onend = () => { if (onEnd) onEnd(); };
+    utterances[utterances.length - 1].onend = () => { 
+      activeUtterances = [];
+      if (onEnd) onEnd(); 
+    };
     
     // Fallback if it gets interrupted/cancelled
     utterances.forEach(u => {
-      u.onerror = () => { if (onEnd) onEnd(); };
+      u.onerror = () => { 
+        activeUtterances = [];
+        if (onEnd) onEnd(); 
+      };
     });
   }
 
+  activeUtterances = utterances;
   utterances.forEach(u => window.speechSynthesis.speak(u));
 };

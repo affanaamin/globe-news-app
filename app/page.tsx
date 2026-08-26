@@ -82,22 +82,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* Pointer-events blocker: prevents globe interaction when hovering dashboard area */}
-      {showDashboard && (
-        <div className="absolute top-0 right-0 h-full w-full max-w-md z-30" style={{ pointerEvents: 'auto' }} />
-      )}
-
       {showDashboard && (
         <div className="absolute top-0 right-0 h-full w-full max-w-md bg-black/80 backdrop-blur-md border-l border-white/20 p-6 overflow-y-auto z-40">
           <button 
-            onClick={() => {
-              if (viewMode === 'pakistan') {
-                handleBackToGlobal();
-                handleSelectCountry(null);
-              } else {
-                handleSelectCountry(null);
-              }
-            }}
+            type="button"
+            aria-label="Close news dashboard"
+            onClick={() => handleSelectCountry(null)}
             className="absolute top-4 right-4 text-white hover:text-gray-300 z-50"
           >
             ✕

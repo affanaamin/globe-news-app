@@ -9,7 +9,7 @@ const getAudioContext = () => {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 };
@@ -36,20 +36,26 @@ export const playClickSound = () => {
   osc.stop(ctx.currentTime + 0.1);
 };
 
+let cachedNoiseBuffer: AudioBuffer | null = null;
+
+const getNoiseBuffer = (ctx: AudioContext) => {
+  if (!cachedNoiseBuffer) {
+    const bufferSize = ctx.sampleRate * 0.01; // 10ms
+    cachedNoiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = cachedNoiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1; // White noise
+    }
+  }
+  return cachedNoiseBuffer;
+};
+
 export const playTypewriterSound = () => {
   const ctx = getAudioContext();
   if (!ctx) return;
 
-  // Typewriter tick using a very short burst of filtered noise
-  const bufferSize = ctx.sampleRate * 0.01; // 10ms
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1; // White noise
-  }
-
   const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
+  noise.buffer = getNoiseBuffer(ctx);
 
   const filter = ctx.createBiquadFilter();
   filter.type = "highpass";

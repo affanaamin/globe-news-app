@@ -16,10 +16,18 @@ export default function Starfield() {
     
     let mouseX = 0;
     let mouseY = 0;
+    let rafId: number;
+
+    let resizeTimeout: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(resize, 200);
+    };
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
       initStars();
     };
 
@@ -64,7 +72,7 @@ export default function Starfield() {
         ctx.fill();
       });
 
-      requestAnimationFrame(draw);
+      rafId = requestAnimationFrame(draw);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -72,14 +80,15 @@ export default function Starfield() {
       mouseY = e.clientY;
     };
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
     
     resize();
     draw();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
@@ -88,6 +97,7 @@ export default function Starfield() {
     <canvas 
       ref={canvasRef} 
       className="absolute inset-0 pointer-events-none z-0"
+      aria-hidden="true"
     />
   );
 }

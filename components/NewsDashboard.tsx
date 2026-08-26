@@ -53,6 +53,8 @@ const TypewriterText = ({ text, delay = 0, speed = 15 }: { text: string, delay?:
   );
 };
 
+let cachedCountriesData: any[] | null = null;
+
 export default function NewsDashboard({ 
   country,
   province,
@@ -89,8 +91,11 @@ export default function NewsDashboard({
 
   // Fetch Demographic Data from local dataset (restcountries.com v3.1 is deprecated)
   useEffect(() => {
-    fetch('/countries-data.json')
-      .then(res => res.json())
+    const dataPromise = cachedCountriesData
+      ? Promise.resolve(cachedCountriesData)
+      : fetch('/countries-data.json').then(res => res.json()).then(data => { cachedCountriesData = data; return data; });
+
+    dataPromise
       .then((allCountries: any[]) => {
         const match = allCountries.find((c: any) => 
           c.name?.common?.toLowerCase() === country.toLowerCase() ||
@@ -173,7 +178,8 @@ export default function NewsDashboard({
       [lat, lng] = demographics.capitalInfo.latlng;
     }
     
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`)
+    const controller = new AbortController();
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         if (data && data.current) {
@@ -183,14 +189,18 @@ export default function NewsDashboard({
           });
         }
       })
-      .catch(console.error);
+      .catch(e => {
+        if (e.name !== 'AbortError') console.error(e);
+      });
+    return () => controller.abort();
   }, [demographics, province]);
 
   // Fetch News Data
   useEffect(() => {
     setLoading(true);
     const query = searchQuery || country;
-    fetch(`/api/news?country=${encodeURIComponent(query)}&category=${category}`)
+    const controller = new AbortController();
+    fetch(`/api/news?country=${encodeURIComponent(query)}&category=${category}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setNews(data.articles || []);
@@ -199,10 +209,12 @@ export default function NewsDashboard({
         }
         setLoading(false);
       })
-      .catch(() => {
+      .catch((e) => {
+        if (e.name === 'AbortError') return;
         setLoading(false);
         if (onMentionsExtracted) onMentionsExtracted([]);
       });
+    return () => controller.abort();
   }, [country, searchQuery, category, onMentionsExtracted]);
 
   const handleBroadcast = () => {
@@ -243,6 +255,7 @@ export default function NewsDashboard({
           <TypewriterText text={searchQuery || country} speed={30} />
           {showExpandBtn && onExpand && (
             <button 
+              type="button"
               onClick={onExpand}
               className="ml-2 text-xs bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 px-2 py-1 rounded transition-all font-mono shadow-[0_0_10px_rgba(0,255,128,0.2)]"
             >
@@ -253,6 +266,7 @@ export default function NewsDashboard({
         {!loading && news.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
             <button 
+              type="button"
               onClick={toggleSpeed}
               className="flex items-center gap-1 bg-black hover:bg-gray-800 text-gray-300 border border-gray-600 px-2 py-1.5 rounded transition-all font-mono text-xs shadow-[0_0_10px_rgba(255,255,255,0.05)]"
               title="Playback Speed"
@@ -263,6 +277,7 @@ export default function NewsDashboard({
 
             {isBroadcasting ? (
               <button 
+                type="button"
                 onClick={handleStop}
                 className="flex items-center gap-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/50 px-2 py-1.5 rounded transition-all font-mono text-xs shadow-[0_0_10px_rgba(255,0,0,0.2)] animate-pulse"
               >
@@ -271,6 +286,7 @@ export default function NewsDashboard({
               </button>
             ) : (
               <button 
+                type="button"
                 onClick={handleBroadcast}
                 className="flex items-center gap-1 bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 px-2 py-1.5 rounded transition-all font-mono text-xs shadow-[0_0_10px_rgba(0,255,128,0.2)]"
               >
@@ -342,6 +358,7 @@ export default function NewsDashboard({
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
         {categories.map((cat) => (
           <button
+            type="button"
             key={cat}
             onClick={() => setCategory(cat)}
             className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded border transition-colors whitespace-nowrap ${
@@ -403,6 +420,7 @@ export default function NewsDashboard({
                         src={article.image} 
                         alt={article.title} 
                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                       />
                     </div>
                   )}

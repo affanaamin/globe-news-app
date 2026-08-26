@@ -13,13 +13,30 @@ export default function PakistanMap({ onSelectProvince, selectedProvince, onBack
   const [geoData, setGeoData] = useState<any>(null);
   const [hoveredProvince, setHoveredProvince] = useState<string | null>(null);
 
+  const [centroids, setCentroids] = useState<Map<string, [number, number]>>(new Map());
+
   useEffect(() => {
     fetch('/pakistan-provinces.geojson')
       .then(res => res.json())
       .then(data => {
-        // Remove CRS property — d3-geo doesn't support it and it breaks fitSize/geoBounds
-        delete data.crs;
-        setGeoData(data);
+        // Clone GeoJSON before mutating
+        const cleanData = JSON.parse(JSON.stringify(data));
+        delete cleanData.crs;
+        
+        const projection = geoMercator().fitSize([900, 750], cleanData);
+        const path = geoPath().projection(projection);
+        
+        const newCentroids = new Map<string, [number, number]>();
+        cleanData.features.forEach((feature: any) => {
+          const name = feature.properties.shapeName;
+          const centroid = path.centroid(feature);
+          if (centroid && !isNaN(centroid[0]) && !isNaN(centroid[1])) {
+            newCentroids.set(name, centroid as [number, number]);
+          }
+        });
+        
+        setCentroids(newCentroids);
+        setGeoData(cleanData);
       })
       .catch(err => console.error('Failed to load Pakistan GeoJSON:', err));
   }, []);
@@ -38,38 +55,7 @@ export default function PakistanMap({ onSelectProvince, selectedProvince, onBack
     );
   }
 
-  const getProvinceStyle = (name: string): React.CSSProperties => {
-    const isSelected = selectedProvince === name;
-    const isHovered = hoveredProvince === name;
 
-    if (isSelected) {
-      return {
-        fill: 'rgba(0, 255, 128, 0.3)',
-        stroke: '#00ff80',
-        strokeWidth: 4,
-        filter: 'drop-shadow(0 0 15px rgba(0, 255, 128, 0.9))',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-      };
-    }
-    if (isHovered) {
-      return {
-        fill: 'rgba(0, 255, 128, 0.12)',
-        stroke: '#00ff80',
-        strokeWidth: 3,
-        filter: 'drop-shadow(0 0 8px rgba(0, 255, 128, 0.5))',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-      };
-    }
-    return {
-      fill: 'rgba(0, 255, 128, 0.04)',
-      stroke: 'rgba(0, 255, 128, 0.7)',
-      strokeWidth: 2.5,
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-    };
-  };
 
   return (
     <div className="absolute inset-0 w-full h-full bg-black flex items-center justify-center overflow-hidden">
@@ -88,6 +74,7 @@ export default function PakistanMap({ onSelectProvince, selectedProvince, onBack
       </div>
 
       <button 
+        type="button"
         onClick={onBack}
         className="absolute top-8 left-8 z-50 flex items-center gap-2 bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 px-4 py-2 rounded transition-all font-mono shadow-[0_0_15px_rgba(0,255,128,0.3)] backdrop-blur-md"
       >
@@ -120,6 +107,10 @@ export default function PakistanMap({ onSelectProvince, selectedProvince, onBack
                 onClick={() => onSelectProvince(name)}
                 onMouseEnter={() => setHoveredProvince(name)}
                 onMouseLeave={() => setHoveredProvince(null)}
+                tabIndex={0}
+                role="button"
+                aria-label={name}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectProvince(name); } }}
               />
             );
           })}
@@ -151,9 +142,9 @@ export default function PakistanMap({ onSelectProvince, selectedProvince, onBack
           
           {/* PASS 3: Labels */}
           {geoData.features.map((feature: any, i: number) => {
-            const centroid = pathGenerator.centroid(feature);
-            if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return null;
             const name = feature.properties.shapeName;
+            const centroid = centroids.get(name);
+            if (!centroid) return null;
             const isSelected = selectedProvince === name;
             const isHovered = hoveredProvince === name;
             

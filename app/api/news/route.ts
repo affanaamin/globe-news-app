@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 const sentiment = new Sentiment();
+const parser = new Parser();
 
 let cachedGeoJson: any = null;
 
@@ -20,14 +21,13 @@ async function getCachedGeoJson() {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const country = searchParams.get('country');
-  const category = searchParams.get('category') || 'General';
+  const category = (searchParams.get('category') || 'general').toLowerCase();
 
   if (!country) {
     return NextResponse.json({ error: 'Country is required' }, { status: 400 });
   }
 
   try {
-    const parser = new Parser();
     const query = encodeURIComponent(`${country} ${category === 'general' ? 'News' : category} when:2d`);
     const feedUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
     
@@ -61,7 +61,8 @@ export async function GET(request: Request) {
       // Scan for mentions
       const articleMentionsSet = new Set<string>();
       countryLookups.forEach((c: any) => {
-        const regex = new RegExp(`\\b${c.name.toLowerCase()}\\b`, 'g');
+        const escapedName = c.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedName}\\b`, 'g');
         if (regex.test(fullText)) {
           mentionsSet.add(c.name);
           articleMentionsSet.add(c.name);
@@ -86,18 +87,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("RSS Parsing Error:", error);
-    return NextResponse.json({
-      articles: [
-        {
-          title: "Error Fetching Live News",
-          description: "There was an error connecting to the live RSS feed.",
-          source: { name: "System Message" },
-          url: "#",
-          image: null,
-          publishedAt: new Date().toISOString()
-        }
-      ],
-      mentions: []
-    });
+    return NextResponse.json(
+      { articles: [], mentions: [], error: 'Failed to fetch news' },
+      { status: 502 }
+    );
   }
 }
