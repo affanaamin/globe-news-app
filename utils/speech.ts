@@ -9,6 +9,8 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   };
 }
 
+export const isSpeaking = () => activeUtterances.length > 0;
+
 export const stopBroadcast = () => {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
@@ -55,7 +57,7 @@ export const broadcastNews = (
 
   headlines.forEach((text, i) => {
     // Clean up text for better reading (remove URLs, weird chars)
-    let cleanText = text.replace(/https?:\/\/[^\s]+/g, 'link removed')
+    const cleanText = text.replace(/https?:\/\/[^\s]+/g, 'link removed')
                         .replace(/[^\p{L}\p{N}\s.,?!-]/gu, '');
 
     // Add a pause before reading the headline number

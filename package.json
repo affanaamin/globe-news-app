@@ -2,11 +2,16 @@
   "name": "globe-news-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:news": "next dev",
+    "dev:gev": "npm --prefix gods-eye-view run dev",
+    "dev:all": "node scripts/start-dual-engine.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@types/three": "^0.185.4",

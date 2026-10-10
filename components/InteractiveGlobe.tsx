@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Globe from 'react-globe.gl';
 import { geoCentroid } from 'd3-geo';
 import { playClickSound } from '../utils/audio';
@@ -89,10 +89,10 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
 
   const isCountry = (d: any) => d && d.properties && d.properties.ADMIN;
 
-  const isSelectedCountry = (d: any) => {
+  const isSelectedCountry = useCallback((d: any) => {
     if (!d || !d.properties) return false;
     return isCountry(d) && (d.properties.ADMIN || d.properties.NAME) === selectedCountry;
-  };
+  }, [selectedCountry]);
 
   const isActive = (d: any) => d === hoverD || isSelectedCountry(d);
 
@@ -114,7 +114,7 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
         name: mentionName
       };
     }).filter(Boolean) as any[];
-  }, [selectedCountry, mentions, countries]);
+  }, [selectedCountry, mentions, countries, isSelectedCountry]);
 
   // Effect to zoom into country or zoom out
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function InteractiveGlobe({ selectedCountry, onSelectCountry, men
         globeEl.current.pointOfView({ altitude: 2.5 }, 1000);
       }
     }
-  }, [selectedCountry, countries]);
+  }, [selectedCountry, countries, isSelectedCountry]);
 
   // ISS Tracker Effect
   const [issData, setIssData] = useState<{ lat: number; lng: number, path: {lat: number, lng: number}[] } | null>(null);

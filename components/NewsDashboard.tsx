@@ -1,9 +1,26 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Newspaper, Loader2, Globe as GlobeIcon, Users, Landmark, Coins, Volume2, Square, FastForward, Clock, Thermometer } from 'lucide-react';
+import { 
+  Newspaper, Loader2, Globe as GlobeIcon, Users, Landmark, Coins, 
+  Volume2, Square, FastForward, Clock, Thermometer, Crosshair, 
+  ExternalLink, Radar 
+} from 'lucide-react';
 import { playTypewriterSound } from '../utils/audio';
 import { broadcastNews, stopBroadcast } from '../utils/speech';
+import { GevView } from '@/types/gev';
+import { buildArticleReconView } from '@/utils/reconDispatch';
+
+export interface NewsArticle {
+  title: string;
+  description?: string;
+  source?: { name: string };
+  url: string;
+  image?: string | null;
+  publishedAt?: string;
+  sentimentScore?: number;
+  mentions?: string[];
+}
 
 const getWeatherString = (code: number) => {
   if (code === 0) return "CLEAR SKY";
@@ -18,10 +35,15 @@ const getWeatherString = (code: number) => {
 const TypewriterText = ({ text, delay = 0, speed = 15 }: { text: string, delay?: number, speed?: number }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  
-  useEffect(() => {
+  const [prevText, setPrevText] = useState(text);
+
+  if (text !== prevText) {
+    setPrevText(text);
     setDisplayedText('');
     setIsTyping(false);
+  }
+  
+  useEffect(() => {
     if (!text) return;
 
     let interval: NodeJS.Timeout;
@@ -61,16 +83,22 @@ export default function NewsDashboard({
   searchQuery,
   onMentionsExtracted,
   showExpandBtn,
-  onExpand
+  onExpand,
+  engineMode = 'strategic',
+  onSelectReconTarget,
+  activeTargetArticleUrl,
 }: { 
-  country: string, 
-  province?: string | null,
-  searchQuery?: string,
-  onMentionsExtracted?: (mentions: string[]) => void,
-  showExpandBtn?: boolean,
-  onExpand?: () => void
+  country: string;
+  province?: string | null;
+  searchQuery?: string;
+  onMentionsExtracted?: (mentions: string[]) => void;
+  showExpandBtn?: boolean;
+  onExpand?: () => void;
+  engineMode?: 'strategic' | 'recon';
+  onSelectReconTarget?: (view: GevView, article: NewsArticle) => void;
+  activeTargetArticleUrl?: string | null;
 }) {
-  const [news, setNews] = useState<any[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>([]);
   const [demographics, setDemographics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('general');
@@ -80,6 +108,15 @@ export default function NewsDashboard({
   const [weather, setWeather] = useState<{ temp: number, condition: string } | null>(null);
 
   const categories = ['general', 'finance', 'politics', 'technology'];
+
+  // React 19 render-phase state adjustment when query or category changes
+  const query = searchQuery || country;
+  const currentQueryKey = `${query}:${category}`;
+  const [prevQueryKey, setPrevQueryKey] = useState(currentQueryKey);
+  if (currentQueryKey !== prevQueryKey) {
+    setPrevQueryKey(currentQueryKey);
+    setLoading(true);
+  }
 
   // Clean up speech synthesis when component unmounts or changes country
   useEffect(() => {
@@ -197,10 +234,9 @@ export default function NewsDashboard({
 
   // Fetch News Data
   useEffect(() => {
-    setLoading(true);
-    const query = searchQuery || country;
+    const activeQuery = searchQuery || country;
     const controller = new AbortController();
-    fetch(`/api/news?country=${encodeURIComponent(query)}&category=${category}`, { signal: controller.signal })
+    fetch(`/api/news?country=${encodeURIComponent(activeQuery)}&category=${category}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setNews(data.articles || []);
@@ -214,12 +250,14 @@ export default function NewsDashboard({
         setLoading(false);
         if (onMentionsExtracted) onMentionsExtracted([]);
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [country, searchQuery, category, onMentionsExtracted]);
 
   const handleBroadcast = () => {
     if (isBroadcasting) return;
-    const headlines = news.map(article => article.title);
+    const headlines = news.map((article: NewsArticle) => article.title);
 
     broadcastNews(
       headlines, 
@@ -241,9 +279,26 @@ export default function NewsDashboard({
     if (isBroadcasting) {
       stopBroadcast();
       setTimeout(() => {
-        const headlines = news.map(article => article.title);
+        const headlines = news.map((article: NewsArticle) => article.title);
         broadcastNews(headlines, newSpeed, () => setIsBroadcasting(true), () => setIsBroadcasting(false));
       }, 100);
+    }
+  };
+
+  const handleDispatchArticleRecon = (article: NewsArticle) => {
+    const defaultCoords = (demographics?.capitalInfo?.latlng || demographics?.latlng) as [number, number] | undefined;
+    const reconView = buildArticleReconView({
+      title: article.title,
+      description: article.description,
+      sentimentScore: article.sentimentScore,
+      country,
+      province,
+      mentions: article.mentions || [],
+      defaultCoords,
+    });
+
+    if (onSelectReconTarget) {
+      onSelectReconTarget(reconView, article);
     }
   };
 
@@ -305,7 +360,7 @@ export default function NewsDashboard({
           <div className="absolute left-0 top-0 w-full h-0.5 bg-green-500/50 shadow-[0_0_10px_rgba(0,255,128,0.8)] opacity-50 animate-scan pointer-events-none"></div>
 
           <div className="flex justify-between items-start mb-3 border-b border-green-500/30 pb-2">
-            <div className="text-green-500 tracking-widest font-bold">// SECURE_INTEL_LINK</div>
+            <div className="text-green-500 tracking-widest font-bold">{"// SECURE_INTEL_LINK"}</div>
             <div className="flex items-center gap-2 text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
               <Clock className="w-3.5 h-3.5 animate-pulse" />
               <span className="text-sm font-bold tracking-widest">{localTime}</span>
@@ -384,38 +439,55 @@ export default function NewsDashboard({
               <TypewriterText text="ERROR 404: NO_RECENT_TRANSMISSIONS_FOUND." />
             </p>
           ) : (
-            news.map((article, i) => {
+            news.map((article: NewsArticle, i: number) => {
               const score = article.sentimentScore || 0;
               const isPositive = score > 0;
               const isNegative = score < 0;
+              const isTargeted = activeTargetArticleUrl === article.url;
 
-              const borderClass = isPositive 
-                ? 'border-green-500/50 shadow-[0_0_15px_rgba(0,255,128,0.2)]' 
-                : isNegative 
-                  ? 'border-red-500/50 shadow-[0_0_15px_rgba(255,0,0,0.2)]' 
-                  : 'border-blue-500/30 shadow-[0_0_15px_rgba(0,128,255,0.1)]';
+              const borderClass = isTargeted
+                ? 'border-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.4)] ring-1 ring-cyan-400'
+                : isPositive 
+                  ? 'border-green-500/50 shadow-[0_0_15px_rgba(0,255,128,0.2)]' 
+                  : isNegative 
+                    ? 'border-red-500/50 shadow-[0_0_15px_rgba(255,0,0,0.2)]' 
+                    : 'border-blue-500/30 shadow-[0_0_15px_rgba(0,128,255,0.1)]';
 
-              const barClass = isPositive 
-                ? 'bg-green-500/50 group-hover:bg-green-400' 
-                : isNegative 
-                  ? 'bg-red-500/50 group-hover:bg-red-400' 
-                  : 'bg-blue-500/50 group-hover:bg-blue-400';
+              const barClass = isTargeted
+                ? 'bg-cyan-400'
+                : isPositive 
+                  ? 'bg-green-500/50 group-hover:bg-green-400' 
+                  : isNegative 
+                    ? 'bg-red-500/50 group-hover:bg-red-400' 
+                    : 'bg-blue-500/50 group-hover:bg-blue-400';
 
-              const titleClass = isPositive ? 'text-green-100' : isNegative ? 'text-red-100' : 'text-blue-100';
+              const titleClass = isTargeted 
+                ? 'text-cyan-200' 
+                : isPositive 
+                  ? 'text-green-100' 
+                  : isNegative 
+                    ? 'text-red-100' 
+                    : 'text-blue-100';
 
               return (
-                <a 
+                <div 
                   key={i} 
-                  href={article.url} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className={`block p-4 rounded-lg bg-black hover:bg-white/5 transition border ${borderClass} group relative overflow-hidden`}
+                  className={`block p-4 rounded-lg bg-black/90 hover:bg-white/5 transition border ${borderClass} group relative overflow-hidden`}
                 >
-                  {/* Cyberpunk accent bar based on sentiment */}
+                  {/* Cyberpunk accent bar based on sentiment or target */}
                   <div className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${barClass}`}></div>
                   
+                  {/* Active target banner */}
+                  {isTargeted && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-cyan-300 font-mono font-bold tracking-widest uppercase mb-2 bg-cyan-950/60 border border-cyan-500/40 px-2 py-0.5 rounded w-fit">
+                      <Radar className="w-3 h-3 animate-spin text-cyan-400" />
+                      LOCKED RECON TARGET // TELEMETRY ACTIVE
+                    </div>
+                  )}
+
                   {article.image && (
                     <div className="mb-3 w-full h-32 overflow-hidden rounded border border-green-500/20">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img 
                         src={article.image} 
                         alt={article.title} 
@@ -445,11 +517,38 @@ export default function NewsDashboard({
                     </p>
                   )}
                   {article.description && (
-                    <p className="text-xs text-gray-400 leading-relaxed">
+                    <p className="text-xs text-gray-400 leading-relaxed mb-3">
                       <TypewriterText text={article.description} delay={i * 300 + 400} speed={5} />
                     </p>
                   )}
-                </a>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-2 font-mono text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleDispatchArticleRecon(article)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-bold tracking-wider transition ${
+                        isTargeted
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400'
+                          : 'bg-cyan-950/40 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:border-cyan-400'
+                      }`}
+                      title="Dispatch camera, telemetry, and sensor to God's Eye View"
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                      <span>{isTargeted ? 'TARGETED' : engineMode === 'recon' ? 'TARGET SENSOR' : 'DISPATCH RECON'}</span>
+                    </button>
+
+                    <a
+                      href={article.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-gray-400 hover:text-white transition text-[11px]"
+                    >
+                      <span>READ</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
               );
             })
           )}

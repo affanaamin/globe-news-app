@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Planet OSINT // Dual-Engine Intelligence Console
+
+An advanced geospatial open-source intelligence (OSINT) and live news monitoring console combining:
+1. **Strategic Overview (3D Globe):** High-level Three.js neon cyberpunk globe with ISS live orbit telemetry and 2D Pakistan provincial deep-dive.
+2. **Tactical Recon (God's Eye View):** High-resolution Cesium 3D geospatial intelligence console integrated from [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), supporting live flights, AIS maritime vessels, satellites, earthquakes, thermal fire feeds, radio stations, and multiple sensor modes (FLIR Thermal, NVG Night Vision, CRT Phosphor, Photoreal 3D).
+
+---
+
+## Architecture & Integration Details
+
+- **Dual-Engine Toggle:** Header buttons in `app/page.tsx` allow seamless hot-switching between Strategic 3D Globe and Tactical Recon.
+- **Embedded RPC Protocol:** `components/GodsEyeViewEmbed.tsx` embeds GEV via `/?embed=1` and handles bidirectional `window.postMessage` RPC:
+  - Inbound: Listens for `gev:ready` and `gev:view-applied`.
+  - Outbound: Dispatches validated type-safe `gev:view` payloads with camera coordinates, layer visibility, annotation pins/highlights, and sensor styles.
+- **Headline Recon Dispatching:** In `NewsDashboard.tsx`, news headlines can be targeted (`DISPATCH RECON`). `utils/reconDispatch.ts` parses locations and event keywords to automatically configure camera coordinates, sensor styles, and relevant telemetry layers (e.g. military flights for conflict, AIS vessels for maritime, thermal FLIR for disasters).
+- **Framing & CSP:** GEV is configured in `gods-eye-view/.env` with `GEV_EMBED_FRAME_ANCESTORS=http://localhost:3000 http://localhost:3001 *` to allow iframe embedding under its CSP plugin.
+
+---
 
 ## Getting Started
 
-First, run the development server:
-
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install main application dependencies
+npm install
+
+# Install God's Eye View dependencies
+npm --prefix gods-eye-view install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Configuration
+- In root `.env.local`:
+  ```env
+  NEXT_PUBLIC_GEV_URL=http://localhost:4173
+  ```
+- In `gods-eye-view/.env`:
+  ```env
+  PORT=4173
+  GEV_EMBED_FRAME_ANCESTORS=http://localhost:3000 http://localhost:3001 *
+  ```
+  *(Optional: Add `GOOGLE_MAPS_API_KEY` or `CESIUM_ION_TOKEN` in `gods-eye-view/.env` for Google Photorealistic 3D Tiles).*
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Running the Development Servers
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+You can launch both engines concurrently with one command:
+```bash
+npm run dev:all
+```
 
-## Learn More
+Or run them individually in separate terminals:
+```bash
+# Terminal 1: Next.js News App (http://localhost:3000)
+npm run dev:news
 
-To learn more about Next.js, take a look at the following resources:
+# Terminal 2: God's Eye View Tactical Console (http://localhost:4173)
+npm run dev:gev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Testing & Verification
+```bash
+# Run unit tests verifying GEV contract schemas, hotspot resolution, and edge cases
+npm test
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Run Next.js production build and TypeScript check
+npm run build
+```
+Builds cleanly with zero TypeScript errors.
