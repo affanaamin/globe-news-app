@@ -5,7 +5,13 @@ import {
   PAKISTAN_STRATEGIC_POINTS, 
   searchPakistanHotspots, 
   buildHotspotReconView,
-  getKnownHotspot 
+  getKnownHotspot,
+  CPEC_ROUTE_WAYPOINTS,
+  CPEC_ROUTE_ANNOTATION,
+  GWADAR_MARITIME_CORRIDOR_ANNOTATION,
+  KARACHI_COASTAL_CORRIDOR_ANNOTATION,
+  getPakistanTacticalAnnotations,
+  isPakistanLocation
 } from '../utils/reconDispatch.ts';
 import { 
   PAKISTAN_RADIO_STATIONS, 
@@ -231,4 +237,148 @@ test('Audio utilities master mute and tactical sound triggers execute safely in 
     stopTelemetryHum();
     isTelemetryHumActive();
   });
+});
+
+test('Cinematic 3D camera angles and oblique pitch/heading perspectives are tuned for Pakistani landmarks', () => {
+  // 1. Islamabad: Low-altitude looking North toward Margalla Hills
+  const isb = KNOWN_HOTSPOTS['islamabad'];
+  assert.ok(isb);
+  assert.equal(isb.altitude_m, 2800);
+  assert.equal(isb.pitch_deg, -20);
+  assert.equal(isb.heading_deg, 0);
+
+  // 2. Gwadar: Ocean-level looking across Hammerhead peninsula toward deep-sea berths
+  const gwd = KNOWN_HOTSPOTS['gwadar'];
+  assert.ok(gwd);
+  assert.equal(gwd.altitude_m, 2200);
+  assert.equal(gwd.pitch_deg, -18);
+  assert.equal(gwd.heading_deg, 45);
+
+  // 3. K2 & Baltoro Glacier: High-altitude looking down Baltoro toward K2 summit pyramid
+  const k2 = KNOWN_HOTSPOTS['k2'];
+  assert.ok(k2);
+  assert.equal(k2.altitude_m, 9500);
+  assert.equal(k2.pitch_deg, -24);
+  assert.equal(k2.heading_deg, 25);
+
+  const baltoro = KNOWN_HOTSPOTS['baltoro'];
+  assert.ok(baltoro);
+  assert.equal(baltoro.altitude_m, 9500);
+  assert.equal(baltoro.pitch_deg, -24);
+
+  // 4. Karachi: Arabian Sea surveillance angle across Clifton Beach and Port Qasim
+  const khi = KNOWN_HOTSPOTS['karachi'];
+  assert.ok(khi);
+  assert.equal(khi.altitude_m, 3500);
+  assert.equal(khi.pitch_deg, -28);
+  assert.equal(khi.heading_deg, 330);
+
+  // 5. Tarbela & Mangla Dams: Hydraulic angles looking across spillways into reservoir basins
+  const tarbela = KNOWN_HOTSPOTS['tarbela dam'];
+  assert.ok(tarbela);
+  assert.equal(tarbela.altitude_m, 3200);
+  assert.equal(tarbela.pitch_deg, -22);
+  assert.equal(tarbela.heading_deg, 50);
+
+  const mangla = KNOWN_HOTSPOTS['mangla dam'];
+  assert.ok(mangla);
+  assert.equal(mangla.altitude_m, 3000);
+  assert.equal(mangla.pitch_deg, -20);
+  assert.equal(mangla.heading_deg, 40);
+
+  // 6. Mountain pass corridors: Khunjerab, Torkham, Chaman
+  const khunjerab = KNOWN_HOTSPOTS['khunjerab pass'];
+  assert.ok(khunjerab);
+  assert.equal(khunjerab.altitude_m, 5800);
+  assert.equal(khunjerab.pitch_deg, -25);
+  assert.equal(khunjerab.heading_deg, 15);
+
+  const torkham = KNOWN_HOTSPOTS['torkham'];
+  assert.ok(torkham);
+  assert.equal(torkham.altitude_m, 2600);
+  assert.equal(torkham.pitch_deg, -22);
+  assert.equal(torkham.heading_deg, 290);
+
+  const chaman = KNOWN_HOTSPOTS['chaman'];
+  assert.ok(chaman);
+  assert.equal(chaman.altitude_m, 3000);
+  assert.equal(chaman.pitch_deg, -22);
+  assert.equal(chaman.heading_deg, 315);
+
+  // K2 point in strategic points catalog
+  const k2Point = PAKISTAN_STRATEGIC_POINTS.find(p => p.id === 'pk-k2');
+  assert.ok(k2Point, 'K2 must be in PAKISTAN_STRATEGIC_POINTS');
+  assert.equal(k2Point.coords.altitude_m, 9500);
+  assert.equal(k2Point.coords.pitch_deg, -24);
+  assert.equal(k2Point.coords.heading_deg, 25);
+});
+
+test('Glowing 3D CPEC Route vectors and maritime/border corridors are valid and adhere to GEV schema', () => {
+  // Import symbols dynamically or verify exported CPEC route
+  assert.ok(Array.isArray(CPEC_ROUTE_WAYPOINTS), 'CPEC_ROUTE_WAYPOINTS must be an array');
+  assert.equal(CPEC_ROUTE_WAYPOINTS.length, 6, 'CPEC route should connect 6 primary waypoints from Khunjerab to Gwadar');
+
+  // Verify waypoints trace Khunjerab -> Gilgit -> Islamabad -> Multan -> Sukkur -> Gwadar
+  const [khunjerabWp, gilgitWp, isbWp, multanWp, sukkurWp, gwadarWp] = CPEC_ROUTE_WAYPOINTS;
+  assert.ok(khunjerabWp.latitude > 36 && khunjerabWp.longitude > 75, 'Waypoint 1 is Khunjerab Pass');
+  assert.ok(gilgitWp.latitude > 35 && gilgitWp.longitude > 74, 'Waypoint 2 is Gilgit');
+  assert.ok(isbWp.latitude > 33 && isbWp.longitude > 72, 'Waypoint 3 is Islamabad');
+  assert.ok(multanWp.latitude > 30 && multanWp.longitude > 71, 'Waypoint 4 is Multan');
+  assert.ok(sukkurWp.latitude > 27 && sukkurWp.longitude > 68, 'Waypoint 5 is Sukkur');
+  assert.ok(gwadarWp.latitude > 25 && gwadarWp.longitude > 62, 'Waypoint 6 is Gwadar Port');
+
+  // Annotation validation
+  assert.equal(CPEC_ROUTE_ANNOTATION.type, 'route');
+  assert.equal(CPEC_ROUTE_ANNOTATION.color, 'cyan');
+  assert.ok(CPEC_ROUTE_ANNOTATION.label.includes('CPEC'));
+
+  // Corridors
+  assert.equal(GWADAR_MARITIME_CORRIDOR_ANNOTATION.type, 'highlight');
+  assert.equal(GWADAR_MARITIME_CORRIDOR_ANNOTATION.color, 'cyan');
+  assert.equal(KARACHI_COASTAL_CORRIDOR_ANNOTATION.type, 'highlight');
+  assert.equal(KARACHI_COASTAL_CORRIDOR_ANNOTATION.color, 'cyan');
+
+  // getPakistanTacticalAnnotations produces valid annotations
+  const gwdTactical = getPakistanTacticalAnnotations({ targetId: 'pk-gwd', targetCategory: 'Port & Maritime' });
+  assert.ok(gwdTactical.some(a => a.type === 'route'), 'Includes CPEC route');
+  assert.ok(gwdTactical.some(a => a.label?.includes('GWADAR')), 'Includes Gwadar anchorage highlight');
+
+  const khiTactical = getPakistanTacticalAnnotations({ targetId: 'pk-khi', targetCategory: 'Port & Maritime' });
+  assert.ok(khiTactical.some(a => a.label?.includes('KARACHI')), 'Includes Karachi coastal highlight');
+
+  // Location detection
+  assert.equal(isPakistanLocation('Islamabad'), true);
+  assert.equal(isPakistanLocation('Gwadar Port'), true);
+  assert.equal(isPakistanLocation('K2 Summit'), true);
+  assert.equal(isPakistanLocation('Balochistan Province'), true);
+  assert.equal(isPakistanLocation('Tokyo, Japan'), false);
+
+  // Full view integration test with GEV validator
+  const hotspot = PAKISTAN_STRATEGIC_POINTS.find(p => p.id === 'pk-gwd');
+  const view = buildHotspotReconView(hotspot);
+  const validated = createView(view);
+  assert.ok(validated, 'GEV createView validator approves view with 3D CPEC route and maritime highlight');
+  assert.ok(validated.annotations.length >= 3, 'Contains pin, hotspot highlight, and CPEC route annotation');
+});
+
+test('GEV viewer and scene configure terrain exaggeration 1.25, enableLighting, and atmospheric fog', async () => {
+  const viewerJs = await import('node:fs').then(fs => 
+    fs.readFileSync(new URL('../gods-eye-view/src/app/viewer.js', import.meta.url), 'utf8')
+  );
+  assert.ok(viewerJs.includes('terrainExaggeration: 1.25'), 'viewer.js must set terrainExaggeration: 1.25');
+  assert.ok(viewerJs.includes('viewer.scene.globe.enableLighting = true'), 'viewer.js must set enableLighting = true');
+  assert.ok(viewerJs.includes('viewer.scene.globe.terrainExaggeration = 1.25'), 'viewer.js must set globe.terrainExaggeration = 1.25');
+  assert.ok(viewerJs.includes('viewer.scene.fog.enabled = true'), 'viewer.js must enable atmospheric fog');
+
+  const sceneJs = await import('node:fs').then(fs => 
+    fs.readFileSync(new URL('../gods-eye-view/src/app/scene.js', import.meta.url), 'utf8')
+  );
+  assert.ok(sceneJs.includes('viewer.scene.globe.enableLighting = true'), 'scene.js must configure dynamic lighting');
+  assert.ok(sceneJs.includes('viewer.scene.globe.terrainExaggeration = 1.25'), 'scene.js must configure terrain exaggeration');
+
+  const buildGev = await import('node:fs').then(fs => 
+    fs.readFileSync(new URL('../scripts/build-gev.mjs', import.meta.url), 'utf8')
+  );
+  assert.ok(buildGev.includes('CESIUM_ION_TOKEN'), 'build-gev.mjs must pass CESIUM_ION_TOKEN');
+  assert.ok(buildGev.includes('GOOGLE_MAPS_API_KEY'), 'build-gev.mjs must pass GOOGLE_MAPS_API_KEY');
 });

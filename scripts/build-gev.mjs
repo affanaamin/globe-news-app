@@ -72,7 +72,60 @@ function syncRootIcons(sourceDir) {
   }
 }
 
+function loadEnvFiles() {
+  const envCandidates = [
+    path.join(rootDir, '.env'),
+    path.join(rootDir, '.env.local'),
+    path.join(gevDir, '.env'),
+    path.join(gevDir, '.env.local'),
+  ];
+
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx > 0) {
+            const key = trimmed.slice(0, eqIdx).trim();
+            const val = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+            if (!process.env[key] && val) {
+              process.env[key] = val;
+            }
+          }
+        }
+      } catch {
+        // ignore read error
+      }
+    }
+  }
+
+  // Cross-wire NEXT_PUBLIC and standard keys
+  if (process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN && !process.env.CESIUM_ION_TOKEN) {
+    process.env.CESIUM_ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+  }
+  if (process.env.CESIUM_ION_TOKEN && !process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN) {
+    process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN = process.env.CESIUM_ION_TOKEN;
+  }
+  if (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !process.env.GOOGLE_MAPS_API_KEY) {
+    process.env.GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  }
+  if (process.env.GOOGLE_MAPS_API_KEY && !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+  }
+
+  if (process.env.CESIUM_ION_TOKEN) {
+    console.log('🔑 [build-gev] CESIUM_ION_TOKEN detected - photoreal 3D globe & world terrain enabled.');
+  }
+  if (process.env.GOOGLE_MAPS_API_KEY) {
+    console.log('🔑 [build-gev] GOOGLE_MAPS_API_KEY detected - photoreal 3D building meshes enabled.');
+  }
+}
+
 async function main() {
+  loadEnvFiles();
   const isWin = process.platform === 'win32';
   const npmCmd = isWin ? 'npm.cmd' : 'npm';
 
@@ -86,6 +139,7 @@ async function main() {
       cwd: gevDir,
       stdio: 'inherit',
       shell: true,
+      env: { ...process.env },
     });
 
     if (result.status !== 0) {
