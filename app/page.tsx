@@ -46,10 +46,12 @@ export default function Home() {
   const [activeArticleUrl, setActiveArticleUrl] = useState<string | null>(null);
   const [activeHotspot, setActiveHotspot] = useState<PakistanStrategicPoint | null>(null);
 
-  // Mobile layout & drawer state (< 768px)
+  // Mobile layout & drawer state (< 768px): minimized (48px), peek (192px), expanded (88vh)
+  type DrawerState = 'minimized' | 'peek' | 'expanded';
   const [isMobile, setIsMobile] = useState(false);
-  const [drawerState, setDrawerState] = useState<'peek' | 'half' | 'full'>('half');
+  const [drawerState, setDrawerState] = useState<DrawerState>('peek');
   const [isMutedState, setIsMutedState] = useState(false);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -66,6 +68,23 @@ export default function Home() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY === null) return;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    setTouchStartY(null);
+    if (deltaY < -35) {
+      playScannerClick();
+      setDrawerState(prev => prev === 'minimized' ? 'peek' : 'expanded');
+    } else if (deltaY > 35) {
+      playScannerClick();
+      setDrawerState(prev => prev === 'expanded' ? 'peek' : 'minimized');
+    }
+  };
 
   useEffect(() => {
     const syncModeFromUrl = () => {
@@ -128,6 +147,7 @@ export default function Home() {
     setActiveHotspot(hotspot);
     setSelectedCountry('Pakistan');
     setSelectedProvince(hotspot.province);
+    setViewMode('pakistan');
     setActiveArticleUrl(null);
 
     const reconView = buildHotspotReconView(hotspot);
@@ -137,6 +157,9 @@ export default function Home() {
     if (flyToRecon) {
       playTargetLockSound();
       setEngineMode('recon');
+      if (isMobile) {
+        setDrawerState('peek');
+      }
     } else {
       playScannerClick();
     }
@@ -146,6 +169,9 @@ export default function Home() {
     setViewMode('pakistan');
     setSelectedProvince(null);
     setActiveHotspot(null);
+    if (isMobile) {
+      setDrawerState('minimized');
+    }
   };
 
   const handleBackToGlobal = () => {
@@ -317,15 +343,18 @@ export default function Home() {
       <div 
         className={`transition-all duration-300 z-30 ${
           isMobile 
-            ? showDashboard && drawerState !== 'peek'
+            ? showDashboard && drawerState === 'expanded'
               ? 'absolute top-16 left-4 right-4 flex justify-center'
-              : 'absolute bottom-24 left-4 right-4 flex justify-center'
+              : showDashboard && drawerState === 'peek'
+                ? 'absolute bottom-52 left-4 right-4 flex justify-center'
+                : 'absolute bottom-16 left-4 right-4 flex justify-center'
             : `absolute bottom-8 ${showDashboard ? 'right-[30rem]' : 'right-8'}`
         }`}
       >
         <CountrySearch 
           onSelectCountry={handleSelectCountry} 
           onSelectHotspot={handleSelectHotspot}
+          dropdownPosition={isMobile && showDashboard && drawerState === 'expanded' ? 'down' : 'up'}
         />
       </div>
 
@@ -373,69 +402,90 @@ export default function Home() {
       {/* MOBILE (< 768px): Responsive Bottom Sheet / Collapsible Drawer */}
       {showDashboard && isMobile && (
         <div 
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
           className={`fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-2xl border-t border-green-500/50 rounded-t-2xl shadow-[0_-15px_35px_rgba(0,0,0,0.9)] transition-all duration-300 flex flex-col overflow-hidden ${
-            drawerState === 'peek' 
-              ? 'h-20' 
-              : drawerState === 'half' 
-                ? 'h-[55vh]' 
-                : 'h-[90vh]'
+            drawerState === 'minimized' 
+              ? 'h-12' 
+              : drawerState === 'peek' 
+                ? 'h-48' 
+                : 'h-[88vh]'
           }`}
         >
           {/* Mobile Drawer Top Drag Bar & Controls */}
           <div 
             onClick={() => {
               playScannerClick();
-              setDrawerState(prev => prev === 'peek' ? 'half' : prev === 'half' ? 'full' : 'peek');
+              setDrawerState(prev => prev === 'minimized' ? 'peek' : prev === 'peek' ? 'expanded' : 'minimized');
             }}
             className="w-full pt-2 pb-1.5 px-4 cursor-pointer flex flex-col items-center border-b border-white/10 shrink-0 bg-green-950/20"
           >
             {/* Drag Handle Pill */}
-            <div className="w-12 h-1 bg-green-500/50 rounded-full mb-2"></div>
+            <div className="w-12 h-1 bg-green-500/50 rounded-full mb-1.5"></div>
             
             <div className="w-full flex items-center justify-between text-xs font-mono">
               <div className="flex items-center gap-2 truncate pr-2">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0"></div>
-                <span className="font-bold text-green-300 uppercase truncate">
+                <span className="font-bold text-green-300 uppercase truncate text-[11px] sm:text-xs">
                   {activeHotspot ? activeHotspot.displayName : (dashboardSearchQuery || dashboardCountry)}
                 </span>
-                <span className="text-[10px] text-gray-400 hidden xs:inline">
+                <span className="text-[10px] text-gray-400">
                   [{drawerState.toUpperCase()}]
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                {/* Minimize/Maximize state buttons */}
+              <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                {/* Minimize button */}
                 <button
                   type="button"
                   onClick={() => {
                     playScannerClick();
-                    setDrawerState(prev => prev === 'full' ? 'half' : 'peek');
+                    setDrawerState('minimized');
                   }}
-                  className="p-1 text-gray-400 hover:text-white"
-                  title="Collapse Drawer"
+                  className={`p-1 transition ${drawerState === 'minimized' ? 'text-green-400 font-bold' : 'text-gray-400 hover:text-white'}`}
+                  title="Minimize Drawer"
                 >
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
+                {/* Peek button */}
                 <button
                   type="button"
                   onClick={() => {
                     playScannerClick();
-                    setDrawerState(prev => prev === 'peek' ? 'half' : 'full');
+                    setDrawerState('peek');
                   }}
-                  className="p-1 text-gray-400 hover:text-white"
-                  title="Expand Drawer"
+                  className={`px-1.5 py-0.5 rounded text-[10px] border transition ${
+                    drawerState === 'peek' 
+                      ? 'border-green-400 text-green-300 bg-green-500/20 font-bold' 
+                      : 'border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Peek Summary"
+                >
+                  PEEK
+                </button>
+
+                {/* Expand button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playScannerClick();
+                    setDrawerState('expanded');
+                  }}
+                  className={`p-1 transition ${drawerState === 'expanded' ? 'text-green-400 font-bold' : 'text-gray-400 hover:text-white'}`}
+                  title="Expand Full Dashboard"
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
 
+                {/* Close button */}
                 <button
                   type="button"
                   onClick={() => {
                     playScannerClick();
                     handleSelectCountry(null);
                   }}
-                  className="p-1 text-gray-400 hover:text-red-400 font-bold ml-1"
+                  className="p-1 text-gray-400 hover:text-red-400 font-bold ml-0.5"
                   title="Close Drawer"
                 >
                   ✕
@@ -445,19 +495,28 @@ export default function Home() {
           </div>
 
           {/* Drawer Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <NewsDashboard 
-              country={dashboardCountry}
-              province={viewMode === 'pakistan' ? selectedProvince : null}
-              searchQuery={dashboardSearchQuery}
-              onMentionsExtracted={setMentions} 
-              showExpandBtn={selectedCountry === 'Pakistan' && viewMode === 'global'}
-              onExpand={handleExpandPakistan}
-              engineMode={engineMode}
-              onSelectReconTarget={handleSelectReconTarget}
-              activeTargetArticleUrl={activeArticleUrl}
-            />
-          </div>
+          {drawerState !== 'minimized' && (
+            <div className="flex-1 overflow-y-auto p-4">
+              <NewsDashboard 
+                country={dashboardCountry}
+                province={viewMode === 'pakistan' ? selectedProvince : null}
+                searchQuery={dashboardSearchQuery}
+                onMentionsExtracted={setMentions} 
+                showExpandBtn={selectedCountry === 'Pakistan' && viewMode === 'global'}
+                onExpand={() => {
+                  if (drawerState === 'peek') {
+                    setDrawerState('expanded');
+                  } else {
+                    handleExpandPakistan();
+                  }
+                }}
+                engineMode={engineMode}
+                onSelectReconTarget={handleSelectReconTarget}
+                activeTargetArticleUrl={activeArticleUrl}
+                compactMode={drawerState === 'peek'}
+              />
+            </div>
+          )}
         </div>
       )}
     </main>

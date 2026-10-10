@@ -282,27 +282,35 @@ export const startTelemetryHum = () => {
 
 export const stopTelemetryHum = () => {
   humActive = false;
-  if (humGain && audioCtx) {
+  const currentOsc1 = humOsc1;
+  const currentOsc2 = humOsc2;
+  const currentGain = humGain;
+
+  if (currentGain && audioCtx) {
     try {
       const now = audioCtx.currentTime;
-      humGain.gain.linearRampToValueAtTime(0.0001, now + 0.5);
+      currentGain.gain.linearRampToValueAtTime(0.0001, now + 0.5);
       setTimeout(() => {
         try {
-          humOsc1?.stop();
-          humOsc2?.stop();
-          humOsc1?.disconnect();
-          humOsc2?.disconnect();
-          humGain?.disconnect();
+          currentOsc1?.stop();
+          currentOsc2?.stop();
+          currentOsc1?.disconnect();
+          currentOsc2?.disconnect();
+          currentGain?.disconnect();
         } catch {}
-        humOsc1 = null;
-        humOsc2 = null;
-        humGain = null;
+        if (humOsc1 === currentOsc1) humOsc1 = null;
+        if (humOsc2 === currentOsc2) humOsc2 = null;
+        if (humGain === currentGain) humGain = null;
       }, 500);
     } catch {
-      humOsc1 = null;
-      humOsc2 = null;
-      humGain = null;
+      if (humOsc1 === currentOsc1) humOsc1 = null;
+      if (humOsc2 === currentOsc2) humOsc2 = null;
+      if (humGain === currentGain) humGain = null;
     }
+  } else {
+    if (humOsc1 === currentOsc1) humOsc1 = null;
+    if (humOsc2 === currentOsc2) humOsc2 = null;
+    if (humGain === currentGain) humGain = null;
   }
 };
 

@@ -18,9 +18,14 @@ export interface SearchResultItem {
 interface CountrySearchProps {
   onSelectCountry: (country: string) => void;
   onSelectHotspot?: (hotspot: PakistanStrategicPoint, flyToRecon?: boolean) => void;
+  dropdownPosition?: 'up' | 'down';
 }
 
-export default function CountrySearch({ onSelectCountry, onSelectHotspot }: CountrySearchProps) {
+export default function CountrySearch({ 
+  onSelectCountry, 
+  onSelectHotspot,
+  dropdownPosition = 'up',
+}: CountrySearchProps) {
   const [query, setQuery] = useState('');
   const [countries, setCountries] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<SearchResultItem[]>([]);
@@ -138,13 +143,15 @@ export default function CountrySearch({ onSelectCountry, onSelectHotspot }: Coun
     }
   };
 
+  const isDropdownDown = dropdownPosition === 'down';
+
   return (
     <div ref={wrapperRef} className="relative z-50">
       {isOpen && suggestions.length > 0 && (
         <div 
           id="country-suggestions"
           role="listbox"
-          className="absolute bottom-full mb-2 w-80 sm:w-96 bg-black/95 border border-green-500/60 rounded-lg overflow-hidden backdrop-blur-xl shadow-[0_0_25px_rgba(0,255,128,0.25)] font-mono text-xs max-h-80 overflow-y-auto"
+          className={`absolute ${isDropdownDown ? 'top-full mt-2' : 'bottom-full mb-2'} w-80 sm:w-96 bg-black/95 border border-green-500/60 rounded-lg overflow-hidden backdrop-blur-xl shadow-[0_0_25px_rgba(0,255,128,0.25)] font-mono text-xs max-h-80 overflow-y-auto`}
         >
           <div className="px-3 py-1.5 bg-green-950/40 border-b border-green-500/30 text-[10px] text-green-400 font-bold uppercase tracking-wider flex items-center justify-between">
             <span>TACTICAL RECON TARGET SEARCH</span>

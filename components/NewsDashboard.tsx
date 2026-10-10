@@ -88,6 +88,7 @@ export default function NewsDashboard({
   engineMode = 'strategic',
   onSelectReconTarget,
   activeTargetArticleUrl,
+  compactMode = false,
 }: { 
   country: string;
   province?: string | null;
@@ -98,6 +99,7 @@ export default function NewsDashboard({
   engineMode?: 'strategic' | 'recon';
   onSelectReconTarget?: (view: GevView, article: NewsArticle) => void;
   activeTargetArticleUrl?: string | null;
+  compactMode?: boolean;
 }) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [demographics, setDemographics] = useState<any>(null);
@@ -310,14 +312,14 @@ export default function NewsDashboard({
   return (
     <div className="text-white">
       <div className="flex justify-between items-center mb-4 gap-2">
-        <h2 className="text-2xl font-bold flex items-center gap-2 font-mono flex-1">
-          <Newspaper className="w-6 h-6 text-green-400 shrink-0" />
-          <TypewriterText text={searchQuery || country} speed={30} />
+        <h2 className="text-lg sm:text-2xl font-bold flex items-center gap-2 font-mono flex-1 min-w-0">
+          <Newspaper className="w-5 h-5 sm:w-6 sm:h-6 text-green-400 shrink-0" />
+          <span className="truncate"><TypewriterText text={searchQuery || country} speed={30} /></span>
           {showExpandBtn && onExpand && (
             <button 
               type="button"
               onClick={onExpand}
-              className="ml-2 text-xs bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 px-2 py-1 rounded transition-all font-mono shadow-[0_0_10px_rgba(0,255,128,0.2)]"
+              className="ml-2 text-xs bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 px-2 py-1 rounded transition-all font-mono shadow-[0_0_10px_rgba(0,255,128,0.2)] shrink-0"
             >
               EXPAND
             </button>
@@ -414,12 +416,36 @@ export default function NewsDashboard({
         </div>
       )}
       
-      {/* Tactical Live Radio Tuner (Active for Pakistan & its provinces) */}
-      {(country.toLowerCase() === 'pakistan' || !!province) && (
-        <div className="mb-6">
-          <TacticalRadioPlayer province={province} />
+      {/* Compact Mode Briefing Action Banner (shown in mobile drawer peek state) */}
+      {compactMode ? (
+        <div 
+          onClick={onExpand}
+          className="p-3 bg-green-950/40 border border-green-500/40 rounded-lg flex items-center justify-between cursor-pointer hover:bg-green-500/20 transition shadow-[0_0_15px_rgba(0,255,128,0.1)] mb-2"
+        >
+          <div className="flex items-center gap-2 text-xs font-mono text-green-300 truncate pr-2">
+            <Radar className="w-4 h-4 animate-spin text-green-400 shrink-0" />
+            <span className="truncate">
+              {news.length > 0 ? `${news.length} RECON TRANSMISSIONS • LIVE RADIO` : 'CONNECTING SECURE INTEL...'}
+            </span>
+          </div>
+          {onExpand && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onExpand(); }}
+              className="text-[10px] bg-green-500/30 hover:bg-green-500/50 text-green-200 border border-green-400 px-2 py-1 rounded font-bold font-mono tracking-wider shrink-0"
+            >
+              EXPAND
+            </button>
+          )}
         </div>
-      )}
+      ) : (
+        <>
+          {/* Tactical Live Radio Tuner (Active for Pakistan & its provinces) */}
+          {(country.toLowerCase() === 'pakistan' || !!province) && (
+            <div className="mb-6">
+              <TacticalRadioPlayer province={province} />
+            </div>
+          )}
       
       {/* Category Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
@@ -568,6 +594,8 @@ export default function NewsDashboard({
             })
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

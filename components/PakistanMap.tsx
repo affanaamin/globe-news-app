@@ -310,7 +310,7 @@ export default function PakistanMap({
       </div>
 
       {/* Bottom Strategic Hotspots & SATELLITE FLY-TO Panel */}
-      <div className="absolute bottom-6 left-6 right-6 md:right-auto md:max-w-xl z-30 bg-black/90 backdrop-blur-md border border-cyan-500/40 rounded-lg p-3 font-mono shadow-2xl">
+      <div className="absolute bottom-16 md:bottom-6 left-4 md:left-6 right-4 md:right-auto md:max-w-xl z-30 bg-black/90 backdrop-blur-md border border-cyan-500/40 rounded-lg p-2.5 sm:p-3 font-mono shadow-2xl">
         <div className="flex items-center justify-between border-b border-cyan-500/30 pb-1.5 mb-2 text-xs">
           <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
             <Crosshair className="w-3.5 h-3.5" />

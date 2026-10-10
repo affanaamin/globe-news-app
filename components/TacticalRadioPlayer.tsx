@@ -41,13 +41,26 @@ export default function TacticalRadioPlayer({ province, className = '' }: Tactic
   const [hasError, setHasError] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
-  const [isHumming, setIsHumming] = useState(false);
+  const [isHumming, setIsHumming] = useState(() => isTelemetryHumActive());
   const [isExpanded, setIsExpanded] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const currentStation: RadioStation = stations[currentStationIndex] || stations[0];
+  const fallbackStation: RadioStation = {
+    id: 'pbc-default',
+    name: 'Radio Pakistan National',
+    callsign: 'PBC-ISB',
+    frequency: 'AM 1260 kHz / FM 93',
+    location: 'Islamabad',
+    province: 'Islamabad Capital Territory',
+    streamUrl: 'https://whmsonic.radio.gov.pk:7003/stream',
+    description: 'National Flagship News Service',
+    genre: 'News & Current Affairs',
+    isVerified: true,
+  };
+
+  const currentStation: RadioStation = stations[currentStationIndex] || stations[0] || fallbackStation;
 
   // Sync with master mute pub/sub
   useEffect(() => {
@@ -105,6 +118,10 @@ export default function TacticalRadioPlayer({ province, className = '' }: Tactic
     audio.addEventListener('pause', onPause);
 
     return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+        scanIntervalRef.current = null;
+      }
       audio.removeEventListener('playing', onPlaying);
       audio.removeEventListener('waiting', onWaiting);
       audio.removeEventListener('error', onError);

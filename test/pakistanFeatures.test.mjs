@@ -139,8 +139,10 @@ test('buildHotspotReconView produces valid GEV schema with appropriate style and
   assert.ok(createView(damView), 'GEV validator accepts dam view');
 });
 
-test('PAKISTAN_RADIO_STATIONS catalog contains verified HTTPS streams across all regions', () => {
-  assert.ok(PAKISTAN_RADIO_STATIONS.length >= 10);
+test('PAKISTAN_RADIO_STATIONS catalog contains verified HTTPS streams across all regions including CityFM89 and FM 100', () => {
+  assert.ok(PAKISTAN_RADIO_STATIONS.length >= 12);
+  assert.ok(PAKISTAN_RADIO_STATIONS.some(s => s.id === 'cityfm89-national'), 'Must include CityFM89');
+  assert.ok(PAKISTAN_RADIO_STATIONS.some(s => s.id === 'fm100-pakistan'), 'Must include FM 100 Pakistan');
 
   for (const station of PAKISTAN_RADIO_STATIONS) {
     assert.ok(station.id);
@@ -149,7 +151,10 @@ test('PAKISTAN_RADIO_STATIONS catalog contains verified HTTPS streams across all
     assert.ok(station.frequency);
     assert.ok(station.location);
     assert.ok(station.province);
-    assert.ok(station.streamUrl.startsWith('https://'), `Stream URL for ${station.name} must be HTTPS`);
+    assert.ok(
+      station.streamUrl.startsWith('https://') || station.streamUrl.startsWith('/api/'),
+      `Stream URL for ${station.name} (${station.streamUrl}) must be HTTPS or secure relative proxy`
+    );
     assert.equal(station.isVerified, true);
   }
 });
@@ -220,6 +225,8 @@ test('Audio utilities master mute and tactical sound triggers execute safely in 
     playRadarPing();
     playScannerClick();
     playTargetLockSound();
+    startTelemetryHum();
+    stopTelemetryHum();
     startTelemetryHum();
     stopTelemetryHum();
     isTelemetryHumActive();

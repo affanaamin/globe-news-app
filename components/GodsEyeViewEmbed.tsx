@@ -338,7 +338,7 @@ export default function GodsEyeViewEmbed({
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden font-mono ${className}`}>
       {/* Top Tactical HUD Bar */}
-      <div className="absolute top-4 left-6 right-6 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+      <div className="absolute top-16 sm:top-4 left-4 sm:left-6 right-4 sm:right-6 z-20 flex flex-wrap items-center justify-between gap-2 sm:gap-3 pointer-events-none">
         {/* Left Telemetry Status */}
         <div className="pointer-events-auto flex items-center gap-2.5 bg-black/85 backdrop-blur-md border border-cyan-500/40 px-3.5 py-2 rounded shadow-[0_0_15px_rgba(0,255,255,0.15)] text-xs">
           <div className="flex items-center gap-2">
