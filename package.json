@@ -8,7 +8,8 @@
     "dev:news": "next dev",
     "dev:gev": "npm --prefix gods-eye-view run dev",
     "dev:all": "node scripts/start-dual-engine.mjs",
-    "build": "next build",
+    "build:gev": "node scripts/build-gev.mjs",
+    "build": "node scripts/build-gev.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --test test/*.test.mjs"

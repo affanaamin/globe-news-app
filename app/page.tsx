@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Globe, Radar, Newspaper, ChevronRight } from 'lucide-react';
 import NewsDashboard, { NewsArticle } from '@/components/NewsDashboard';
@@ -24,6 +24,24 @@ export default function Home() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [targetReconView, setTargetReconView] = useState<GevView | null>(null);
   const [activeArticleUrl, setActiveArticleUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncModeFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const mode = (params.get('mode') || params.get('engine') || '').toLowerCase();
+      if (mode === 'recon' || mode === 'gev' || mode === 'boost') {
+        setHasMountedRecon(true);
+        setEngineMode('recon');
+      }
+    };
+
+    window.addEventListener('popstate', syncModeFromUrl);
+    const timer = setTimeout(syncModeFromUrl, 0);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('popstate', syncModeFromUrl);
+    };
+  }, []);
 
   const handleSelectCountry = (country: string | null) => {
     stopBroadcast();

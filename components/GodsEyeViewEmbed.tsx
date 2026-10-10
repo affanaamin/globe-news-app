@@ -43,7 +43,8 @@ interface GodsEyeViewEmbedProps {
 
 function normalizeEndpointUrl(url: string): string {
   const trimmed = url.trim();
-  if (!trimmed) return 'http://localhost:4173';
+  if (!trimmed) return '/gev';
+  if (trimmed.startsWith('/') || trimmed.startsWith('./')) return trimmed;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   // If user just typed port e.g. "4173" or "5173"
   if (/^\d+$/.test(trimmed)) return `http://localhost:${trimmed}`;
@@ -58,7 +59,7 @@ export default function GodsEyeViewEmbed({
   className = '',
 }: GodsEyeViewEmbedProps) {
   const defaultUrl = normalizeEndpointUrl(
-    initialGevUrl || process.env.NEXT_PUBLIC_GEV_URL || 'http://localhost:4173'
+    initialGevUrl || process.env.NEXT_PUBLIC_GEV_URL || '/gev'
   );
   const [gevBaseUrl, setGevBaseUrl] = useState<string>(defaultUrl);
   const [isCustomUrlOpen, setIsCustomUrlOpen] = useState(false);
@@ -203,18 +204,24 @@ export default function GodsEyeViewEmbed({
     };
   }, [dispatchView]);
 
+  const isRelativeGev = gevBaseUrl === '/gev' || gevBaseUrl === '/gev/' || gevBaseUrl.startsWith('/gev');
+
   // Set timeout warning if iframe takes too long to announce ready
   useEffect(() => {
     readyTimeoutRef.current = setTimeout(() => {
       if (!isReadyRef.current) {
-        setConnectionError('Uplink timeout: Ensure GEV dev server is active on ' + gevBaseUrl);
+        if (isRelativeGev) {
+          setConnectionError('Uplink initialization delay: GEV Cesium 3D engine is loading photoreal terrain assets.');
+        } else {
+          setConnectionError('Uplink timeout: GEV dev server not responding on ' + gevBaseUrl);
+        }
       }
-    }, 12000);
+    }, 16000);
 
     return () => {
       if (readyTimeoutRef.current) clearTimeout(readyTimeoutRef.current);
     };
-  }, [gevBaseUrl, iframeKey]);
+  }, [gevBaseUrl, iframeKey, isRelativeGev]);
 
   // Sync external targetView changes
   useEffect(() => {
@@ -294,7 +301,9 @@ export default function GodsEyeViewEmbed({
     setIframeKey(k => k + 1);
   };
 
-  const embedSrc = `${gevBaseUrl.replace(/\/$/, '')}/?embed=1`;
+  const embedSrc = isRelativeGev
+    ? '/gev/index.html?embed=1'
+    : `${gevBaseUrl.replace(/\/$/, '')}/?embed=1`;
 
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden font-mono ${className}`}>
@@ -396,15 +405,56 @@ export default function GodsEyeViewEmbed({
             </button>
           </div>
           <p className="text-gray-400 text-[11px] mb-3 leading-relaxed">
-            Configure the running God&apos;s Eye View instance. Default is <code className="text-cyan-300">http://localhost:4173</code>:
+            Select engine mode or configure custom GEV server endpoint:
           </p>
-          <div className="flex gap-2 mb-3">
+
+          {/* Quick Presets */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => {
+                setGevBaseUrl('/gev');
+                setCustomUrlInput('/gev');
+                setIsCustomUrlOpen(false);
+                reloadIframe();
+              }}
+              className={`p-2 rounded text-[11px] font-bold border transition text-left ${
+                isRelativeGev
+                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                  : 'bg-black/60 border-gray-700 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <div>Embedded Engine</div>
+              <div className="text-[9px] text-gray-500 font-normal">/gev (Production/Default)</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = 'http://localhost:4173';
+                setGevBaseUrl(target);
+                setCustomUrlInput(target);
+                setIsCustomUrlOpen(false);
+                reloadIframe();
+              }}
+              className={`p-2 rounded text-[11px] font-bold border transition text-left ${
+                gevBaseUrl.includes('4173')
+                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                  : 'bg-black/60 border-gray-700 text-gray-400 hover:border-gray-500'
+              }`}
+            >
+              <div>Dev Server (4173)</div>
+              <div className="text-[9px] text-gray-500 font-normal">localhost:4173 (Vite HMR)</div>
+            </button>
+          </div>
+
+          <div className="flex gap-2 mb-1">
             <input
               type="text"
               value={customUrlInput}
               onChange={(e) => setCustomUrlInput(e.target.value)}
               className="flex-1 bg-black border border-gray-600 px-2.5 py-1.5 rounded text-white text-xs focus:border-cyan-400 outline-none"
-              placeholder="http://localhost:4173"
+              placeholder="/gev or http://localhost:4173"
             />
             <button
               type="button"
@@ -464,6 +514,23 @@ export default function GodsEyeViewEmbed({
         </div>
       </div>
 
+      {/* Satellite Uplink Initializing Loader */}
+      {!isReady && !connectionError && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none bg-black/60 backdrop-blur-[2px]">
+          <div className="relative flex items-center justify-center mb-4">
+            <div className="w-20 h-20 rounded-full border border-cyan-500/30 animate-ping"></div>
+            <div className="w-16 h-16 rounded-full border border-cyan-400/60 animate-pulse absolute"></div>
+            <Radar className="w-8 h-8 text-cyan-400 animate-spin absolute" style={{ animationDuration: '4s' }} />
+          </div>
+          <div className="font-mono text-cyan-300 font-bold tracking-widest text-xs uppercase animate-pulse">
+            ESTABLISHING TACTICAL RECON SATELLITE LINK...
+          </div>
+          <div className="font-mono text-gray-500 text-[10px] mt-1 tracking-wider">
+            SYNCHRONIZING CESIUM 3D PHOTOREAL TILES // OSINT TELEMETRY
+          </div>
+        </div>
+      )}
+
       {/* Offline / Connection Error Overlay */}
       {connectionError && !isReady && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
@@ -472,34 +539,63 @@ export default function GodsEyeViewEmbed({
               <AlertTriangle className="w-7 h-7 shrink-0 animate-pulse" />
               <div>
                 <h3 className="font-bold text-base tracking-wider uppercase">Tactical Recon Uplink Standby</h3>
-                <p className="text-xs text-amber-500/90 font-mono">GEV Engine Not Detected on {gevBaseUrl}</p>
+                <p className="text-xs text-amber-500/90 font-mono">
+                  {isRelativeGev ? 'Cesium 3D Engine Initialization' : `Server Not Reachable on ${gevBaseUrl}`}
+                </p>
               </div>
             </div>
 
             <div className="space-y-3 text-xs font-mono mb-6 bg-gray-950 p-3.5 rounded border border-gray-800">
-              <p className="text-gray-300">To launch the Cesium 3D God&apos;s Eye View engine locally:</p>
-              <div className="bg-black border border-amber-500/30 p-2.5 rounded text-amber-300 select-all font-mono text-[11px]">
-                npm run dev:gev
-              </div>
-              <p className="text-gray-400 text-[11px]">
-                Or start both concurrently: <code className="text-cyan-400">npm run dev:all</code>
-              </p>
+              {!isRelativeGev ? (
+                <>
+                  <p className="text-gray-300">
+                    The external GEV instance on <code className="text-amber-300">{gevBaseUrl}</code> did not respond.
+                  </p>
+                  <p className="text-gray-400 text-[11px]">
+                    Switch to the built-in static engine or ensure your local dev server is running (<code className="text-cyan-400">npm run dev:gev</code>).
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-300">
+                    The embedded Cesium 3D engine is preparing terrain decoders and satellite assets.
+                  </p>
+                  <p className="text-gray-400 text-[11px]">
+                    Click retry below to reinitialize the handshake.
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
+              {!isRelativeGev ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGevBaseUrl('/gev');
+                    setCustomUrlInput('/gev');
+                    reloadIframe();
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 py-2 px-3 rounded font-bold text-xs transition tracking-wider"
+                >
+                  <Radar className="w-3.5 h-3.5" /> USE INTEGRATED ENGINE (/gev)
+                </button>
+              ) : null}
+
               <button
                 type="button"
                 onClick={reloadIframe}
                 className="flex-1 flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 py-2 px-3 rounded font-bold text-xs transition tracking-wider"
               >
-                <RefreshCw className="w-3.5 h-3.5" /> RETRY CONNECTION
+                <RefreshCw className="w-3.5 h-3.5" /> RETRY UPLINK
               </button>
+
               <button
                 type="button"
                 onClick={() => setIsCustomUrlOpen(true)}
                 className="bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 px-3 rounded text-xs transition"
               >
-                Change Port
+                Settings
               </button>
             </div>
           </div>
