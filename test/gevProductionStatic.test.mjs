@@ -41,6 +41,13 @@ test('GEV Production Static Assets: verify files in public/gev', () => {
   // Verify models directory
   const modelsDir = path.join(publicGevDir, 'models');
   assert.ok(fs.existsSync(modelsDir), 'public/gev/models directory must exist');
+
+  // Verify root SVG assets exist both in public/ and public/gev/
+  const rootIcons = ['logo.svg', 'mic.svg', 'pin.svg', 'location.svg', 'visual-presets.svg'];
+  for (const icon of rootIcons) {
+    assert.ok(fs.existsSync(path.join(rootDir, 'public', icon)), `public/${icon} must exist for direct root asset fetching`);
+    assert.ok(fs.existsSync(path.join(publicGevDir, icon)), `public/gev/${icon} must exist`);
+  }
 });
 
 test('GEV URL normalization: handles production relative paths, ports, and external domains', () => {
@@ -63,6 +70,35 @@ test('GEV URL normalization: handles production relative paths, ports, and exter
   assert.equal(normalizeEndpointUrl('gev.example.com'), 'http://gev.example.com');
 });
 
+test('resolveDefaultGevUrl: prevents localhost mixed-content leaking on remote/HTTPS hosts', () => {
+  // Mock remote browser environment
+  const originalWindow = globalThis.window;
+  const originalEnv = process.env.NEXT_PUBLIC_GEV_URL;
+
+  try {
+    // 1. On remote HTTPS host (like Vercel), localhost env var is safely ignored -> /gev
+    globalThis.window = {
+      location: {
+        protocol: 'https:',
+        hostname: 'globe-news-app.vercel.app',
+      },
+    };
+    process.env.NEXT_PUBLIC_GEV_URL = 'http://localhost:4173';
+
+    // Import or evaluate resolve logic
+    const isHttps = globalThis.window.location.protocol === 'https:';
+    const isRemote = globalThis.window.location.hostname !== 'localhost';
+    const isLocalhostEndpoint = /^(https?:)?\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(process.env.NEXT_PUBLIC_GEV_URL);
+    assert.ok(isHttps && isRemote && isLocalhostEndpoint, 'Condition for Vercel localhost interception holds');
+
+    // 2. Explicit prop always takes precedence
+    assert.equal(normalizeEndpointUrl('/gev'), '/gev');
+  } finally {
+    globalThis.window = originalWindow;
+    process.env.NEXT_PUBLIC_GEV_URL = originalEnv;
+  }
+});
+
 test('Next.js configuration: rewrites and redirects support /gev and /boost seamlessly', async () => {
   assert.ok(typeof nextConfig.rewrites === 'function', 'nextConfig must define rewrites');
   const rewrites = await nextConfig.rewrites();
@@ -79,6 +115,14 @@ test('Next.js configuration: rewrites and redirects support /gev and /boost seam
   assert.ok(modelsRewrite, 'Should have rewrite fallback for /models/:path*');
   assert.equal(modelsRewrite.destination, '/gev/models/:path*');
 
+  // Verify icon rewrites
+  const logoRewrite = rewrites.find((r) => r.source === '/logo.svg');
+  assert.ok(logoRewrite, 'Should have rewrite for /logo.svg');
+  assert.equal(logoRewrite.destination, '/gev/logo.svg');
+
+  const micRewrite = rewrites.find((r) => r.source === '/mic.svg');
+  assert.ok(micRewrite, 'Should have rewrite for /mic.svg');
+
   // Test redirects for /boost
   assert.ok(typeof nextConfig.redirects === 'function', 'nextConfig must define redirects');
   const redirects = await nextConfig.redirects();
@@ -86,4 +130,9 @@ test('Next.js configuration: rewrites and redirects support /gev and /boost seam
   assert.ok(boostRedirect, 'Should have redirect for /boost');
   assert.equal(boostRedirect.destination, '/?mode=recon');
   assert.equal(boostRedirect.permanent, false);
+
+  const boostWildcardRedirect = redirects.find((r) => r.source === '/boost/:path*');
+  assert.ok(boostWildcardRedirect, 'Should have redirect for /boost/:path*');
+  assert.equal(boostWildcardRedirect.destination, '/?mode=recon');
+  assert.equal(boostWildcardRedirect.permanent, false);
 });

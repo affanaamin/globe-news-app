@@ -41,14 +41,46 @@ interface GodsEyeViewEmbedProps {
   className?: string;
 }
 
-function normalizeEndpointUrl(url: string): string {
-  const trimmed = url.trim();
+export function normalizeEndpointUrl(url?: string): string {
+  const trimmed = (url || '').trim();
   if (!trimmed) return '/gev';
   if (trimmed.startsWith('/') || trimmed.startsWith('./')) return trimmed;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   // If user just typed port e.g. "4173" or "5173"
   if (/^\d+$/.test(trimmed)) return `http://localhost:${trimmed}`;
   return `http://${trimmed}`;
+}
+
+export function resolveDefaultGevUrl(initialGevUrl?: string): string {
+  if (initialGevUrl && initialGevUrl.trim()) {
+    return normalizeEndpointUrl(initialGevUrl);
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_GEV_URL?.trim();
+
+  // If running in browser:
+  if (typeof window !== 'undefined') {
+    const isHttps = window.location.protocol === 'https:';
+    const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+    // On remote deployments (e.g. Vercel) or HTTPS, never allow localhost fallback
+    // as it triggers mixed content and connection refused errors for remote visitors
+    if (envUrl) {
+      const isLocalhostEndpoint = /^(https?:)?\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(envUrl);
+      if ((isHttps || isRemote) && isLocalhostEndpoint) {
+        return '/gev';
+      }
+      return normalizeEndpointUrl(envUrl);
+    }
+  } else {
+    // SSR / production build phase
+    if (process.env.NODE_ENV === 'production' && envUrl && /localhost|127\.0\.0\.1/i.test(envUrl)) {
+      return '/gev';
+    }
+    if (envUrl) return normalizeEndpointUrl(envUrl);
+  }
+
+  return '/gev';
 }
 
 export default function GodsEyeViewEmbed({
@@ -58,9 +90,7 @@ export default function GodsEyeViewEmbed({
   initialGevUrl,
   className = '',
 }: GodsEyeViewEmbedProps) {
-  const defaultUrl = normalizeEndpointUrl(
-    initialGevUrl || process.env.NEXT_PUBLIC_GEV_URL || '/gev'
-  );
+  const defaultUrl = resolveDefaultGevUrl(initialGevUrl);
   const [gevBaseUrl, setGevBaseUrl] = useState<string>(defaultUrl);
   const [isCustomUrlOpen, setIsCustomUrlOpen] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState(defaultUrl);

@@ -56,6 +56,20 @@ function organizeGevAssets(distDir, targetDir) {
   } else {
     console.log('✅ [build-gev] Verified index.html contains /gev/ base asset links.');
   }
+
+  // Copy root SVG icons to public/ for components requesting /logo.svg, /mic.svg directly
+  syncRootIcons(targetDir);
+}
+
+function syncRootIcons(sourceDir) {
+  const rootIcons = ['logo.svg', 'mic.svg', 'pin.svg', 'location.svg', 'visual-presets.svg'];
+  for (const icon of rootIcons) {
+    const srcIcon = path.join(sourceDir, icon);
+    const destIcon = path.join(rootDir, 'public', icon);
+    if (fs.existsSync(srcIcon)) {
+      fs.copyFileSync(srcIcon, destIcon);
+    }
+  }
 }
 
 async function main() {
@@ -91,6 +105,7 @@ async function main() {
     console.log('🎉 [build-gev] GEV static assets successfully deployed to public/gev!');
   } else if (prebuiltExists) {
     console.log('ℹ️ [build-gev] Using existing pre-built GEV static assets in public/gev.');
+    syncRootIcons(publicGevDir);
   } else if (gevExists) {
     console.log('📦 [build-gev] Installing gods-eye-view dependencies...');
     const installResult = spawnSync(`${npmCmd} install`, {
