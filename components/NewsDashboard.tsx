@@ -6,10 +6,11 @@ import {
   Volume2, Square, FastForward, Clock, Thermometer, Crosshair, 
   ExternalLink, Radar 
 } from 'lucide-react';
-import { playTypewriterSound } from '../utils/audio';
+import { playTypewriterSound, playScannerClick, playTargetLockSound } from '../utils/audio';
 import { broadcastNews, stopBroadcast } from '../utils/speech';
 import { GevView } from '@/types/gev';
 import { buildArticleReconView } from '@/utils/reconDispatch';
+import TacticalRadioPlayer from './TacticalRadioPlayer';
 
 export interface NewsArticle {
   title: string;
@@ -256,6 +257,7 @@ export default function NewsDashboard({
   }, [country, searchQuery, category, onMentionsExtracted]);
 
   const handleBroadcast = () => {
+    playScannerClick();
     if (isBroadcasting) return;
     const headlines = news.map((article: NewsArticle) => article.title);
 
@@ -268,11 +270,13 @@ export default function NewsDashboard({
   };
 
   const handleStop = () => {
+    playScannerClick();
     stopBroadcast();
     setIsBroadcasting(false);
   };
 
   const toggleSpeed = () => {
+    playScannerClick();
     const newSpeed = playbackSpeed === 1.0 ? 1.5 : playbackSpeed === 1.5 ? 2.0 : 1.0;
     setPlaybackSpeed(newSpeed);
     // If currently broadcasting, restart with new speed
@@ -286,6 +290,7 @@ export default function NewsDashboard({
   };
 
   const handleDispatchArticleRecon = (article: NewsArticle) => {
+    playTargetLockSound();
     const defaultCoords = (demographics?.capitalInfo?.latlng || demographics?.latlng) as [number, number] | undefined;
     const reconView = buildArticleReconView({
       title: article.title,
@@ -409,13 +414,23 @@ export default function NewsDashboard({
         </div>
       )}
       
+      {/* Tactical Live Radio Tuner (Active for Pakistan & its provinces) */}
+      {(country.toLowerCase() === 'pakistan' || !!province) && (
+        <div className="mb-6">
+          <TacticalRadioPlayer province={province} />
+        </div>
+      )}
+      
       {/* Category Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
         {categories.map((cat) => (
           <button
             type="button"
             key={cat}
-            onClick={() => setCategory(cat)}
+            onClick={() => {
+              playScannerClick();
+              setCategory(cat);
+            }}
             className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded border transition-colors whitespace-nowrap ${
               category === cat 
                 ? 'bg-green-500/20 border-green-400 text-green-300 shadow-[0_0_10px_rgba(0,255,128,0.2)]' 

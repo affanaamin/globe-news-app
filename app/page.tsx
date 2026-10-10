@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Globe, Radar, Newspaper, ChevronRight } from 'lucide-react';
+import { 
+  Globe, 
+  Radar, 
+  Newspaper, 
+  ChevronRight, 
+  ChevronUp, 
+  ChevronDown, 
+  Volume2, 
+  VolumeX 
+} from 'lucide-react';
 import NewsDashboard, { NewsArticle } from '@/components/NewsDashboard';
 import CountrySearch from '@/components/CountrySearch';
 import Starfield from '@/components/Starfield';
@@ -10,7 +19,18 @@ import PakistanMap from '@/components/PakistanMap';
 import GodsEyeViewEmbed from '@/components/GodsEyeViewEmbed';
 import { stopBroadcast } from '@/utils/speech';
 import { GevView } from '@/types/gev';
-import { getKnownHotspot } from '@/utils/reconDispatch';
+import { 
+  getKnownHotspot, 
+  PakistanStrategicPoint, 
+  buildHotspotReconView 
+} from '@/utils/reconDispatch';
+import { 
+  toggleMasterMute, 
+  subscribeMasterMute, 
+  playRadarPing, 
+  playTargetLockSound, 
+  playScannerClick 
+} from '@/utils/audio';
 
 // Dynamically import InteractiveGlobe to avoid SSR WebGL issues
 const InteractiveGlobe = dynamic(() => import('@/components/InteractiveGlobe'), { ssr: false });
@@ -24,6 +44,28 @@ export default function Home() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [targetReconView, setTargetReconView] = useState<GevView | null>(null);
   const [activeArticleUrl, setActiveArticleUrl] = useState<string | null>(null);
+  const [activeHotspot, setActiveHotspot] = useState<PakistanStrategicPoint | null>(null);
+
+  // Mobile layout & drawer state (< 768px)
+  const [isMobile, setIsMobile] = useState(false);
+  const [drawerState, setDrawerState] = useState<'peek' | 'half' | 'full'>('half');
+  const [isMutedState, setIsMutedState] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeMasterMute((muted) => {
+      setIsMutedState(muted);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const syncModeFromUrl = () => {
@@ -47,6 +89,8 @@ export default function Home() {
     stopBroadcast();
     setSelectedCountry(country);
     setMentions([]);
+    setActiveHotspot(null);
+
     // If leaving Pakistan, reset province mode
     if (country !== 'Pakistan') {
       setViewMode('global');
@@ -79,19 +123,41 @@ export default function Home() {
     }
   };
 
+  const handleSelectHotspot = (hotspot: PakistanStrategicPoint, flyToRecon = true) => {
+    stopBroadcast();
+    setActiveHotspot(hotspot);
+    setSelectedCountry('Pakistan');
+    setSelectedProvince(hotspot.province);
+    setActiveArticleUrl(null);
+
+    const reconView = buildHotspotReconView(hotspot);
+    setHasMountedRecon(true);
+    setTargetReconView(reconView);
+
+    if (flyToRecon) {
+      playTargetLockSound();
+      setEngineMode('recon');
+    } else {
+      playScannerClick();
+    }
+  };
+
   const handleExpandPakistan = () => {
     setViewMode('pakistan');
     setSelectedProvince(null);
+    setActiveHotspot(null);
   };
 
   const handleBackToGlobal = () => {
     setViewMode('global');
     setSelectedProvince(null);
+    setActiveHotspot(null);
   };
 
   const handleSelectProvince = (province: string) => {
     stopBroadcast();
     setSelectedProvince(province);
+    setActiveHotspot(null);
 
     const hotspot = getKnownHotspot(province);
     if (hotspot) {
@@ -125,58 +191,87 @@ export default function Home() {
     setEngineMode('recon');
   };
 
+  const handleToggleMasterAudio = () => {
+    const muted = toggleMasterMute();
+    if (!muted) {
+      playRadarPing();
+    }
+  };
+
   // The dashboard is visible if a country is selected (global mode) or if we are in pakistan mode
   const showDashboard = viewMode === 'global' ? !!selectedCountry : true;
-  // The dashboard title — show province name if one is selected in pakistan mode
   const dashboardCountry = selectedCountry || 'Pakistan';
-  const dashboardSearchQuery = viewMode === 'pakistan' && selectedProvince
-    ? `${selectedProvince} Pakistan`
-    : viewMode === 'pakistan'
-      ? 'Pakistan'
-      : undefined;
+  const dashboardSearchQuery = activeHotspot 
+    ? `${activeHotspot.name} Pakistan`
+    : viewMode === 'pakistan' && selectedProvince
+      ? `${selectedProvince} Pakistan`
+      : viewMode === 'pakistan'
+        ? 'Pakistan'
+        : undefined;
 
   return (
     <main className="relative w-screen h-screen bg-black overflow-hidden select-none">
       <Starfield />
 
       {/* Top Header & Dual-Engine Mode Switcher Bar */}
-      <header className="absolute top-4 left-6 z-30 flex items-center gap-4 pointer-events-none">
+      <header className="absolute top-4 left-4 sm:left-6 z-30 flex flex-wrap items-center gap-2 sm:gap-4 pointer-events-none">
         {/* Console Brand Badge */}
-        <div className="pointer-events-auto flex items-center gap-2.5 bg-black/90 backdrop-blur-md border border-white/20 px-4 py-2 rounded-lg shadow-xl font-mono text-xs text-white">
+        <div className="pointer-events-auto flex items-center gap-2 bg-black/90 backdrop-blur-md border border-white/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg shadow-xl font-mono text-[11px] sm:text-xs text-white">
           <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div>
           <span className="font-bold tracking-widest text-gray-200">PLANET OSINT //</span>
           <span className="text-gray-400 font-medium hidden md:inline">DUAL-ENGINE CONSOLE</span>
         </div>
 
         {/* Engine Switcher Toggle Pill */}
-        <div className="pointer-events-auto flex items-center bg-black/90 backdrop-blur-md border border-white/20 p-1 rounded-lg shadow-xl font-mono text-xs">
+        <div className="pointer-events-auto flex items-center bg-black/90 backdrop-blur-md border border-white/20 p-1 rounded-lg shadow-xl font-mono text-[11px] sm:text-xs">
           <button
             type="button"
-            onClick={() => setEngineMode('strategic')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all ${
+            onClick={() => {
+              playScannerClick();
+              setEngineMode('strategic');
+            }}
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md font-bold uppercase tracking-wider transition-all ${
               engineMode === 'strategic'
                 ? 'bg-green-500/25 text-green-300 border border-green-500/60 shadow-[0_0_12px_rgba(0,255,128,0.3)]'
                 : 'text-gray-400 hover:text-green-300 hover:bg-white/5 border border-transparent'
             }`}
           >
             <Globe className="w-3.5 h-3.5 text-green-400" />
-            <span>STRATEGIC 3D GLOBE</span>
+            <span>STRATEGIC 3D</span>
           </button>
 
           <button
             type="button"
             onClick={() => {
+              playScannerClick();
               setHasMountedRecon(true);
               setEngineMode('recon');
             }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md font-bold uppercase tracking-wider transition-all ${
               engineMode === 'recon'
                 ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/80 shadow-[0_0_12px_rgba(0,255,255,0.3)]'
                 : 'text-gray-400 hover:text-cyan-300 hover:bg-white/5 border border-transparent'
             }`}
           >
             <Radar className="w-3.5 h-3.5 text-cyan-400" />
-            <span>TACTICAL RECON (GEV)</span>
+            <span>TACTICAL RECON</span>
+          </button>
+        </div>
+
+        {/* Master Audio HUD Pill */}
+        <div className="pointer-events-auto flex items-center bg-black/90 backdrop-blur-md border border-white/20 p-1 rounded-lg shadow-xl font-mono text-[11px] sm:text-xs">
+          <button
+            type="button"
+            onClick={handleToggleMasterAudio}
+            className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-md font-bold tracking-wider transition-all ${
+              isMutedState
+                ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                : 'bg-green-500/20 text-green-300 border border-green-500/60 shadow-[0_0_10px_rgba(0,255,128,0.2)]'
+            }`}
+            title={isMutedState ? 'Unmute Master Audio' : 'Mute Master Audio'}
+          >
+            {isMutedState ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isMutedState ? 'MUTED' : 'AUDIO'}</span>
           </button>
         </div>
       </header>
@@ -186,7 +281,7 @@ export default function Home() {
         className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${
           engineMode === 'strategic' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
         }`}
-        style={showDashboard ? { right: '28rem' } : undefined}
+        style={!isMobile && showDashboard ? { right: '28rem' } : undefined}
       >
         {viewMode === 'global' ? (
           <InteractiveGlobe 
@@ -199,6 +294,7 @@ export default function Home() {
             selectedProvince={selectedProvince}
             onSelectProvince={handleSelectProvince}
             onBack={handleBackToGlobal}
+            onSelectHotspot={handleSelectHotspot}
           />
         )}
       </div>
@@ -209,7 +305,7 @@ export default function Home() {
           className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${
             engineMode === 'recon' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
           }`}
-          style={showDashboard ? { right: '28rem' } : undefined}
+          style={!isMobile && showDashboard ? { right: '28rem' } : undefined}
         >
           <GodsEyeViewEmbed 
             targetView={targetReconView}
@@ -217,26 +313,40 @@ export default function Home() {
         </div>
       )}
       
-      {/* Search Bar */}
-      <div className={`absolute bottom-8 transition-all duration-500 z-30 ${showDashboard ? 'right-[30rem]' : 'right-8'}`}>
-        <CountrySearch onSelectCountry={handleSelectCountry} />
+      {/* Search Bar - Responsive Placement */}
+      <div 
+        className={`transition-all duration-300 z-30 ${
+          isMobile 
+            ? showDashboard && drawerState !== 'peek'
+              ? 'absolute top-16 left-4 right-4 flex justify-center'
+              : 'absolute bottom-24 left-4 right-4 flex justify-center'
+            : `absolute bottom-8 ${showDashboard ? 'right-[30rem]' : 'right-8'}`
+        }`}
+      >
+        <CountrySearch 
+          onSelectCountry={handleSelectCountry} 
+          onSelectHotspot={handleSelectHotspot}
+        />
       </div>
 
       {/* Reopen News Dashboard button when closed */}
       {!showDashboard && (
         <button
           type="button"
-          onClick={() => handleSelectCountry('Pakistan')}
-          className="absolute top-4 right-6 z-30 flex items-center gap-2 bg-black/90 hover:bg-green-500/20 text-green-400 border border-green-500/50 px-3.5 py-2 rounded-lg font-mono text-xs font-bold tracking-wider shadow-lg transition-all"
+          onClick={() => {
+            playScannerClick();
+            handleSelectCountry('Pakistan');
+          }}
+          className="absolute top-4 right-4 sm:right-6 z-30 flex items-center gap-2 bg-black/90 hover:bg-green-500/20 text-green-400 border border-green-500/50 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg font-mono text-xs font-bold tracking-wider shadow-lg transition-all"
         >
           <Newspaper className="w-4 h-4" />
-          <span>OPEN INTEL FEED</span>
+          <span>INTEL FEED</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       )}
 
-      {/* News Intelligence Dashboard Sidebar */}
-      {showDashboard && (
+      {/* DESKTOP (>= 768px): Classic Right Sidebar Dashboard */}
+      {showDashboard && !isMobile && (
         <div className="absolute top-0 right-0 h-full w-full max-w-md bg-black/85 backdrop-blur-md border-l border-white/20 p-6 overflow-y-auto z-40 shadow-2xl">
           <button 
             type="button"
@@ -257,6 +367,97 @@ export default function Home() {
             onSelectReconTarget={handleSelectReconTarget}
             activeTargetArticleUrl={activeArticleUrl}
           />
+        </div>
+      )}
+
+      {/* MOBILE (< 768px): Responsive Bottom Sheet / Collapsible Drawer */}
+      {showDashboard && isMobile && (
+        <div 
+          className={`fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-2xl border-t border-green-500/50 rounded-t-2xl shadow-[0_-15px_35px_rgba(0,0,0,0.9)] transition-all duration-300 flex flex-col overflow-hidden ${
+            drawerState === 'peek' 
+              ? 'h-20' 
+              : drawerState === 'half' 
+                ? 'h-[55vh]' 
+                : 'h-[90vh]'
+          }`}
+        >
+          {/* Mobile Drawer Top Drag Bar & Controls */}
+          <div 
+            onClick={() => {
+              playScannerClick();
+              setDrawerState(prev => prev === 'peek' ? 'half' : prev === 'half' ? 'full' : 'peek');
+            }}
+            className="w-full pt-2 pb-1.5 px-4 cursor-pointer flex flex-col items-center border-b border-white/10 shrink-0 bg-green-950/20"
+          >
+            {/* Drag Handle Pill */}
+            <div className="w-12 h-1 bg-green-500/50 rounded-full mb-2"></div>
+            
+            <div className="w-full flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-2 truncate pr-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0"></div>
+                <span className="font-bold text-green-300 uppercase truncate">
+                  {activeHotspot ? activeHotspot.displayName : (dashboardSearchQuery || dashboardCountry)}
+                </span>
+                <span className="text-[10px] text-gray-400 hidden xs:inline">
+                  [{drawerState.toUpperCase()}]
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                {/* Minimize/Maximize state buttons */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playScannerClick();
+                    setDrawerState(prev => prev === 'full' ? 'half' : 'peek');
+                  }}
+                  className="p-1 text-gray-400 hover:text-white"
+                  title="Collapse Drawer"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playScannerClick();
+                    setDrawerState(prev => prev === 'peek' ? 'half' : 'full');
+                  }}
+                  className="p-1 text-gray-400 hover:text-white"
+                  title="Expand Drawer"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playScannerClick();
+                    handleSelectCountry(null);
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-400 font-bold ml-1"
+                  title="Close Drawer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Drawer Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <NewsDashboard 
+              country={dashboardCountry}
+              province={viewMode === 'pakistan' ? selectedProvince : null}
+              searchQuery={dashboardSearchQuery}
+              onMentionsExtracted={setMentions} 
+              showExpandBtn={selectedCountry === 'Pakistan' && viewMode === 'global'}
+              onExpand={handleExpandPakistan}
+              engineMode={engineMode}
+              onSelectReconTarget={handleSelectReconTarget}
+              activeTargetArticleUrl={activeArticleUrl}
+            />
+          </div>
         </div>
       )}
     </main>

@@ -8,17 +8,53 @@ export interface LocationCoordinates {
   heading_deg?: number;
 }
 
+export interface PakistanStrategicPoint {
+  id: string;
+  name: string;
+  displayName: string;
+  category: 'Strategic City' | 'Port & Maritime' | 'Border Crossing' | 'Critical Infrastructure' | 'Administrative Hub';
+  province: string;
+  coords: LocationCoordinates;
+  keywords: string[];
+  description: string;
+}
+
 export const KNOWN_HOTSPOTS: Record<string, LocationCoordinates> = {
   // Pakistan regions & cities
   'pakistan': { lat: 30.3753, lon: 69.3451, altitude_m: 900_000, pitch_deg: -55 },
   'islamabad': { lat: 33.6844, lon: 73.0479, altitude_m: 45_000, pitch_deg: -45 },
   'karachi': { lat: 24.8607, lon: 67.0011, altitude_m: 60_000, pitch_deg: -45 },
   'lahore': { lat: 31.5204, lon: 74.3587, altitude_m: 50_000, pitch_deg: -45 },
+  'rawalpindi': { lat: 33.5973, lon: 73.0479, altitude_m: 45_000, pitch_deg: -45 },
   'peshawar': { lat: 34.0151, lon: 71.5249, altitude_m: 45_000, pitch_deg: -45 },
   'quetta': { lat: 30.1798, lon: 66.9750, altitude_m: 45_000, pitch_deg: -45 },
-  'gwadar': { lat: 25.1264, lon: 62.3225, altitude_m: 40_000, pitch_deg: -40 },
+  'gwadar': { lat: 25.1264, lon: 62.3225, altitude_m: 35_000, pitch_deg: -40 },
+  'gwadar port': { lat: 25.1264, lon: 62.3225, altitude_m: 35_000, pitch_deg: -40 },
   'gilgit': { lat: 35.9208, lon: 74.3083, altitude_m: 55_000, pitch_deg: -40 },
   'muzaffarabad': { lat: 34.3700, lon: 73.4711, altitude_m: 45_000, pitch_deg: -45 },
+  'faisalabad': { lat: 31.4504, lon: 73.1350, altitude_m: 45_000, pitch_deg: -45 },
+  'multan': { lat: 30.1575, lon: 71.5249, altitude_m: 45_000, pitch_deg: -45 },
+  'sialkot': { lat: 32.4945, lon: 74.5229, altitude_m: 40_000, pitch_deg: -45 },
+  'hyderabad': { lat: 25.3960, lon: 68.3578, altitude_m: 45_000, pitch_deg: -45 },
+  'sukkur': { lat: 27.7052, lon: 68.8574, altitude_m: 40_000, pitch_deg: -45 },
+  'chaman border': { lat: 30.9213, lon: 66.4522, altitude_m: 30_000, pitch_deg: -40 },
+  'chaman': { lat: 30.9213, lon: 66.4522, altitude_m: 30_000, pitch_deg: -40 },
+  'torkham': { lat: 34.1264, lon: 71.1006, altitude_m: 30_000, pitch_deg: -40 },
+  'torkham border': { lat: 34.1264, lon: 71.1006, altitude_m: 30_000, pitch_deg: -40 },
+  'tarbela dam': { lat: 34.0886, lon: 72.6975, altitude_m: 35_000, pitch_deg: -40 },
+  'tarbela': { lat: 34.0886, lon: 72.6975, altitude_m: 35_000, pitch_deg: -40 },
+  'mangla dam': { lat: 33.1436, lon: 73.6472, altitude_m: 35_000, pitch_deg: -40 },
+  'mangla': { lat: 33.1436, lon: 73.6472, altitude_m: 35_000, pitch_deg: -40 },
+  'port qasim': { lat: 24.7833, lon: 67.3500, altitude_m: 35_000, pitch_deg: -40 },
+  'khunjerab pass': { lat: 36.8500, lon: 75.4278, altitude_m: 50_000, pitch_deg: -45 },
+  'khunjerab': { lat: 36.8500, lon: 75.4278, altitude_m: 50_000, pitch_deg: -45 },
+  'siachen': { lat: 35.4212, lon: 77.1095, altitude_m: 60_000, pitch_deg: -50 },
+  'siachen glacier': { lat: 35.4212, lon: 77.1095, altitude_m: 60_000, pitch_deg: -50 },
+  'skardu': { lat: 35.2971, lon: 75.6333, altitude_m: 50_000, pitch_deg: -40 },
+  'ormara': { lat: 25.2078, lon: 64.6361, altitude_m: 35_000, pitch_deg: -40 },
+  'pasni': { lat: 25.2631, lon: 63.4719, altitude_m: 35_000, pitch_deg: -40 },
+  'bahawalpur': { lat: 29.3956, lon: 71.6836, altitude_m: 45_000, pitch_deg: -45 },
+  'abbottabad': { lat: 34.1688, lon: 73.2215, altitude_m: 40_000, pitch_deg: -40 },
   'sindh': { lat: 25.8943, lon: 68.5247, altitude_m: 400_000, pitch_deg: -50 },
   'punjab': { lat: 31.1704, lon: 72.7097, altitude_m: 450_000, pitch_deg: -50 },
   'khyber pakhtunkhwa': { lat: 34.9526, lon: 72.3311, altitude_m: 350_000, pitch_deg: -50 },
@@ -86,6 +122,252 @@ export const KNOWN_HOTSPOTS: Record<string, LocationCoordinates> = {
   'taiwan strait': { lat: 24.0000, lon: 119.5000, altitude_m: 300_000, pitch_deg: -45 },
 };
 
+/**
+ * Curated registry of Pakistan's major strategic cities, border corridors, deep-sea ports and dams
+ */
+export const PAKISTAN_STRATEGIC_POINTS: PakistanStrategicPoint[] = [
+  {
+    id: 'pk-isb',
+    name: 'islamabad',
+    displayName: 'Islamabad Capital District',
+    category: 'Administrative Hub',
+    province: 'Islamabad Capital Territory',
+    coords: { lat: 33.6844, lon: 73.0479, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['capital', 'federal', 'diplomatic', 'presidency', 'parliament'],
+    description: 'Federal capital, diplomatic enclave, and central command apparatus.',
+  },
+  {
+    id: 'pk-khi',
+    name: 'karachi',
+    displayName: 'Karachi (Arabian Sea Metropolis)',
+    category: 'Port & Maritime',
+    province: 'Sindh',
+    coords: { lat: 24.8607, lon: 67.0011, altitude_m: 60_000, pitch_deg: -45 },
+    keywords: ['port', 'financial', 'stock exchange', 'maritime', 'arabian sea'],
+    description: 'Pakistan largest metropolis, industrial spine, and primary container port.',
+  },
+  {
+    id: 'pk-lhe',
+    name: 'lahore',
+    displayName: 'Lahore (Punjab Capital)',
+    category: 'Strategic City',
+    province: 'Punjab',
+    coords: { lat: 31.5204, lon: 74.3587, altitude_m: 50_000, pitch_deg: -45 },
+    keywords: ['punjab', 'cultural', 'provincial capital', 'eastern border', 'corridor'],
+    description: 'Cultural and political capital of Punjab, key eastern strategic hub.',
+  },
+  {
+    id: 'pk-rwp',
+    name: 'rawalpindi',
+    displayName: 'Rawalpindi (Military GHQ)',
+    category: 'Administrative Hub',
+    province: 'Punjab',
+    coords: { lat: 33.5973, lon: 73.0479, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['ghq', 'defense', 'army', 'joint staff', 'nur khan airbase'],
+    description: 'General Headquarters (GHQ) command node and strategic logistics center.',
+  },
+  {
+    id: 'pk-pew',
+    name: 'peshawar',
+    displayName: 'Peshawar (Frontier Gateway)',
+    category: 'Strategic City',
+    province: 'Khyber Pakhtunkhwa',
+    coords: { lat: 34.0151, lon: 71.5249, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['khyber', 'kpk', 'frontier', 'northwestern corridor', 'balkh'],
+    description: 'Capital of Khyber Pakhtunkhwa, historic trade gateway to Central Asia.',
+  },
+  {
+    id: 'pk-uet',
+    name: 'quetta',
+    displayName: 'Quetta (Balochistan Hub)',
+    category: 'Strategic City',
+    province: 'Balochistan',
+    coords: { lat: 30.1798, lon: 66.9750, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['balochistan', 'bolan pass', 'command and staff college', 'plateau'],
+    description: 'Provincial capital of Balochistan and southwestern overland choke point.',
+  },
+  {
+    id: 'pk-gwd',
+    name: 'gwadar port',
+    displayName: 'Gwadar Port (CPEC Terminus)',
+    category: 'Port & Maritime',
+    province: 'Balochistan',
+    coords: { lat: 25.1264, lon: 62.3225, altitude_m: 35_000, pitch_deg: -40 },
+    keywords: ['gwadar', 'deep sea port', 'cpec', 'arabian sea', 'naval', 'free zone'],
+    description: 'Warm-water deep sea port, China-Pakistan Economic Corridor oceanic terminus.',
+  },
+  {
+    id: 'pk-glt',
+    name: 'gilgit',
+    displayName: 'Gilgit (Karakoram Node)',
+    category: 'Strategic City',
+    province: 'Gilgit-Baltistan',
+    coords: { lat: 35.9208, lon: 74.3083, altitude_m: 55_000, pitch_deg: -40 },
+    keywords: ['karakoram', 'kkh', 'northern areas', 'himalaya', 'highland'],
+    description: 'Administrative capital of Gilgit-Baltistan on the Karakoram Highway route.',
+  },
+  {
+    id: 'pk-mzf',
+    name: 'muzaffarabad',
+    displayName: 'Muzaffarabad (AJK Capital)',
+    category: 'Strategic City',
+    province: 'Azad Kashmir',
+    coords: { lat: 34.3700, lon: 73.4711, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['kashmir', 'ajk', 'jehlum', 'neelum', 'line of control'],
+    description: 'Capital of Azad Jammu & Kashmir, situated at confluence of Neelum and Jhelum rivers.',
+  },
+  {
+    id: 'pk-fsd',
+    name: 'faisalabad',
+    displayName: 'Faisalabad (Industrial Spine)',
+    category: 'Strategic City',
+    province: 'Punjab',
+    coords: { lat: 31.4504, lon: 73.1350, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['textile', 'industry', 'manchester of pakistan', 'punjab'],
+    description: 'Major industrial powerhouse, national textile manufacturing center.',
+  },
+  {
+    id: 'pk-mux',
+    name: 'multan',
+    displayName: 'Multan (Southern Punjab)',
+    category: 'Strategic City',
+    province: 'Punjab',
+    coords: { lat: 30.1575, lon: 71.5249, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['saints', 'agriculture', 'chenab', 'cotton', 'cpec motorway'],
+    description: 'Historic city of saints and central nexus connecting Punjab with Sindh.',
+  },
+  {
+    id: 'pk-skt',
+    name: 'sialkot',
+    displayName: 'Sialkot (Export & Aviation Hub)',
+    category: 'Strategic City',
+    province: 'Punjab',
+    coords: { lat: 32.4945, lon: 74.5229, altitude_m: 40_000, pitch_deg: -45 },
+    keywords: ['export', 'aviation', 'surgical', 'sports goods', 'international airport'],
+    description: 'Dynamic export industrial corridor with private international cargo airport.',
+  },
+  {
+    id: 'pk-hyd',
+    name: 'hyderabad',
+    displayName: 'Hyderabad (Lower Sindh)',
+    category: 'Strategic City',
+    province: 'Sindh',
+    coords: { lat: 25.3960, lon: 68.3578, altitude_m: 45_000, pitch_deg: -45 },
+    keywords: ['sindh', 'indus', 'kotri', 'm9 motorway', 'agricultural'],
+    description: 'Second largest city of Sindh, agricultural and cultural hub on the Indus.',
+  },
+  {
+    id: 'pk-skr',
+    name: 'sukkur',
+    displayName: 'Sukkur (Indus Barrage Hub)',
+    category: 'Critical Infrastructure',
+    province: 'Sindh',
+    coords: { lat: 27.7052, lon: 68.8574, altitude_m: 40_000, pitch_deg: -45 },
+    keywords: ['barrage', 'indus', 'irrigation', 'cpec junction', 'waterway'],
+    description: 'Site of landmark Sukkur Barrage, lifeline of Pakistan canal irrigation system.',
+  },
+  {
+    id: 'pk-chm',
+    name: 'chaman border',
+    displayName: 'Chaman Border (Friendship Gate)',
+    category: 'Border Crossing',
+    province: 'Balochistan',
+    coords: { lat: 30.9213, lon: 66.4522, altitude_m: 30_000, pitch_deg: -40 },
+    keywords: ['chaman', 'durand line', 'kandahar', 'customs', 'spin boldak', 'border'],
+    description: 'Major international border crossing connecting Balochistan with Kandahar, Afghanistan.',
+  },
+  {
+    id: 'pk-trkh',
+    name: 'torkham',
+    displayName: 'Torkham Border (Khyber Pass)',
+    category: 'Border Crossing',
+    province: 'Khyber Pakhtunkhwa',
+    coords: { lat: 34.1264, lon: 71.1006, altitude_m: 30_000, pitch_deg: -40 },
+    keywords: ['torkham', 'khyber pass', 'jalalabad', 'transit', 'durand line', 'border'],
+    description: 'Busiest commercial checkpoint between Pakistan and Afghanistan along the Grand Trunk Road.',
+  },
+  {
+    id: 'pk-trb',
+    name: 'tarbela dam',
+    displayName: 'Tarbela Dam (Indus Reservoir)',
+    category: 'Critical Infrastructure',
+    province: 'Khyber Pakhtunkhwa',
+    coords: { lat: 34.0886, lon: 72.6975, altitude_m: 35_000, pitch_deg: -40 },
+    keywords: ['dam', 'hydroelectric', 'reservoir', 'indus', 'water security', 'megawatt'],
+    description: 'World largest earth-filled dam; cornerstone of Pakistan water storage and hydro grid.',
+  },
+  {
+    id: 'pk-mng',
+    name: 'mangla dam',
+    displayName: 'Mangla Dam (Jhelum Basin)',
+    category: 'Critical Infrastructure',
+    province: 'Azad Kashmir',
+    coords: { lat: 33.1436, lon: 73.6472, altitude_m: 35_000, pitch_deg: -40 },
+    keywords: ['dam', 'jhelum', 'mirpur', 'hydropower', 'reservoir', 'water'],
+    description: 'Major multipurpose hydroelectric reservoir dam on the Jhelum river basin.',
+  },
+  {
+    id: 'pk-pqm',
+    name: 'port qasim',
+    displayName: 'Port Muhammad Bin Qasim',
+    category: 'Port & Maritime',
+    province: 'Sindh',
+    coords: { lat: 24.7833, lon: 67.3500, altitude_m: 35_000, pitch_deg: -40 },
+    keywords: ['port qasim', 'lng terminal', 'energy port', 'shipping', 'steel mill'],
+    description: 'Deep-water energy terminal handling national LNG, petroleum, and coal imports.',
+  },
+  {
+    id: 'pk-khj',
+    name: 'khunjerab pass',
+    displayName: 'Khunjerab Pass (Pak-China Border)',
+    category: 'Border Crossing',
+    province: 'Gilgit-Baltistan',
+    coords: { lat: 36.8500, lon: 75.4278, altitude_m: 50_000, pitch_deg: -45 },
+    keywords: ['khunjerab', 'china', 'karakoram highway', 'highest border', 'xinjiang'],
+    description: 'Highest paved international border crossing at 4,693m on the Karakoram Highway.',
+  },
+  {
+    id: 'pk-scn',
+    name: 'siachen glacier',
+    displayName: 'Siachen Glacier Sector',
+    category: 'Border Crossing',
+    province: 'Gilgit-Baltistan',
+    coords: { lat: 35.4212, lon: 77.1095, altitude_m: 60_000, pitch_deg: -50 },
+    keywords: ['siachen', 'glacier', 'high altitude', 'karakoram', 'defense'],
+    description: 'Strategic high-altitude Karakoram glacial defense zone.',
+  },
+  {
+    id: 'pk-skd',
+    name: 'skardu',
+    displayName: 'Skardu (Baltistan Gateway)',
+    category: 'Strategic City',
+    province: 'Gilgit-Baltistan',
+    coords: { lat: 35.2971, lon: 75.6333, altitude_m: 50_000, pitch_deg: -40 },
+    keywords: ['baltistan', 'k2', 'airport', 'shigar', 'indus valley'],
+    description: 'Key mountain defense sector and base for northern Karakoram expeditions.',
+  },
+  {
+    id: 'pk-orm',
+    name: 'ormara',
+    displayName: 'Ormara (Jinnah Naval Base)',
+    category: 'Port & Maritime',
+    province: 'Balochistan',
+    coords: { lat: 25.2078, lon: 64.6361, altitude_m: 35_000, pitch_deg: -40 },
+    keywords: ['jinnah naval base', 'navy', 'makran coast', 'submarine', 'coastal'],
+    description: 'Strategic Pakistan Navy coastal operating base along Makran Coastal Highway.',
+  },
+  {
+    id: 'pk-abt',
+    name: 'abbottabad',
+    displayName: 'Abbottabad (Hazara Division)',
+    category: 'Strategic City',
+    province: 'Khyber Pakhtunkhwa',
+    coords: { lat: 34.1688, lon: 73.2215, altitude_m: 40_000, pitch_deg: -40 },
+    keywords: ['pma', 'kakul', 'military academy', 'hazara', 'galyat'],
+    description: 'Home of Pakistan Military Academy (PMA) Kakul and Hazara division administrative hub.',
+  },
+];
+
 export interface ArticleReconInput {
   title: string;
   description?: string;
@@ -103,6 +385,82 @@ export function getKnownHotspot(name?: string | null): LocationCoordinates | und
   if (!name) return undefined;
   const key = name.trim().toLowerCase();
   return KNOWN_HOTSPOTS[key];
+}
+
+/**
+ * Searches Pakistan's strategic cities, ports, dams, and border crossings
+ */
+export function searchPakistanHotspots(query: string): PakistanStrategicPoint[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return PAKISTAN_STRATEGIC_POINTS.filter((p) => {
+    return (
+      p.displayName.toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
+      p.province.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      p.keywords.some((k) => k.toLowerCase().includes(q))
+    );
+  });
+}
+
+/**
+ * Builds a God's Eye View payload optimized for a specific Pakistan strategic city or hotspot
+ */
+export function buildHotspotReconView(hotspot: PakistanStrategicPoint): GevView {
+  let style: GevStyle = 'normal';
+  let layers: string[] = ['flights', 'ais-live-vessels', 'satellites'];
+  let pinColor: GevAnnotationColor = 'primary';
+
+  if (hotspot.category === 'Border Crossing') {
+    style = 'surveillance'; // Night vision tactical
+    layers = ['military', 'military-installations', 'military-awareness', 'satellites', 'flights'];
+    pinColor = 'red';
+  } else if (hotspot.category === 'Port & Maritime') {
+    style = 'retro'; // Tactical CRT green
+    layers = ['ais-live-vessels', 'telegeography-submarine-cables', 'weather-radar', 'satellites'];
+    pinColor = 'cyan';
+  } else if (hotspot.category === 'Critical Infrastructure') {
+    style = 'thermal'; // FLIR thermal
+    layers = ['local-dams', 'earthquakes', 'local-firms', 'satellites'];
+    pinColor = 'amber';
+  } else if (hotspot.category === 'Administrative Hub') {
+    style = 'normal';
+    layers = ['flights', 'satellites', 'local-datacenters'];
+    pinColor = 'green';
+  }
+
+  const annotations: GevAnnotation[] = [
+    {
+      type: 'pin',
+      latitude: hotspot.coords.lat,
+      longitude: hotspot.coords.lon,
+      label: `[PK RECON] ${hotspot.displayName.toUpperCase()}`.slice(0, 110),
+      color: pinColor,
+    },
+    {
+      type: 'highlight',
+      latitude: hotspot.coords.lat,
+      longitude: hotspot.coords.lon,
+      color: pinColor,
+    },
+  ];
+
+  const camera: GevCamera = {
+    lat: hotspot.coords.lat,
+    lon: hotspot.coords.lon,
+    altitude_m: hotspot.coords.altitude_m || 40_000,
+    pitch_deg: hotspot.coords.pitch_deg || -45,
+    heading_deg: hotspot.coords.heading_deg || 0,
+  };
+
+  return {
+    camera,
+    layers,
+    style,
+    map: 'photoreal',
+    annotations,
+  };
 }
 
 /**
