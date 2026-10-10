@@ -76,8 +76,12 @@ function loadEnvFiles() {
   const envCandidates = [
     path.join(rootDir, '.env'),
     path.join(rootDir, '.env.local'),
+    path.join(rootDir, '.env.production'),
+    path.join(rootDir, '.env.development'),
     path.join(gevDir, '.env'),
     path.join(gevDir, '.env.local'),
+    path.join(gevDir, '.env.production'),
+    path.join(gevDir, '.env.development'),
   ];
 
   for (const envPath of envCandidates) {

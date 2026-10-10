@@ -22,7 +22,10 @@ import { GevView } from '@/types/gev';
 import { 
   getKnownHotspot, 
   PakistanStrategicPoint, 
-  buildHotspotReconView 
+  buildHotspotReconView,
+  buildProvinceReconView,
+  getPakistanTacticalAnnotations,
+  isPakistanLocation
 } from '@/utils/reconDispatch';
 import { 
   toggleMasterMute, 
@@ -117,26 +120,30 @@ export default function Home() {
     }
 
     if (country) {
+      const isPk = isPakistanLocation(country);
       const hotspot = getKnownHotspot(country);
       if (hotspot) {
         setTargetReconView({
           camera: {
             lat: hotspot.lat,
             lon: hotspot.lon,
-            altitude_m: hotspot.altitude_m || 800_000,
+            altitude_m: hotspot.altitude_m || (isPk ? 900_000 : 800_000),
             pitch_deg: hotspot.pitch_deg || -50,
-            heading_deg: 0,
+            heading_deg: hotspot.heading_deg || 0,
           },
           layers: ['flights', 'ais-live-vessels', 'satellites'],
           style: 'normal',
           map: 'photoreal',
-          annotations: [{
-            type: 'pin',
-            latitude: hotspot.lat,
-            longitude: hotspot.lon,
-            label: `SECTOR: ${country.toUpperCase()}`,
-            color: 'primary',
-          }],
+          annotations: [
+            {
+              type: 'pin',
+              latitude: hotspot.lat,
+              longitude: hotspot.lon,
+              label: `SECTOR: ${country.toUpperCase()}`,
+              color: 'primary',
+            },
+            ...(isPk ? getPakistanTacticalAnnotations({ includeCpec: true }) : []),
+          ],
         });
       }
     }
@@ -185,28 +192,8 @@ export default function Home() {
     setSelectedProvince(province);
     setActiveHotspot(null);
 
-    const hotspot = getKnownHotspot(province);
-    if (hotspot) {
-      setTargetReconView({
-        camera: {
-          lat: hotspot.lat,
-          lon: hotspot.lon,
-          altitude_m: hotspot.altitude_m || 350_000,
-          pitch_deg: hotspot.pitch_deg || -45,
-          heading_deg: 0,
-        },
-        layers: ['flights', 'ais-live-vessels', 'earthquakes'],
-        style: 'normal',
-        map: 'photoreal',
-        annotations: [{
-          type: 'pin',
-          latitude: hotspot.lat,
-          longitude: hotspot.lon,
-          label: `PROVINCE: ${province.toUpperCase()}`,
-          color: 'primary',
-        }],
-      });
-    }
+    const reconView = buildProvinceReconView(province);
+    setTargetReconView(reconView);
   };
 
   const handleSelectReconTarget = (view: GevView, article: NewsArticle) => {

@@ -363,9 +363,23 @@ export default function GodsEyeViewEmbed({
     setIframeKey(k => k + 1);
   };
 
+  const ionToken = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+  const googleKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (ionToken) (window as unknown as Record<string, string>).__CESIUM_ION_TOKEN__ = ionToken;
+      if (googleKey) (window as unknown as Record<string, string>).__GOOGLE_MAPS_API_KEY__ = googleKey;
+    }
+  }, [ionToken, googleKey]);
+
+  const embedParams = new URLSearchParams({ embed: '1' });
+  if (ionToken) embedParams.set('cesium_ion_token', ionToken);
+  if (googleKey) embedParams.set('google_api_key', googleKey);
+
   const embedSrc = isRelativeGev
-    ? '/gev/index.html?embed=1'
-    : `${gevBaseUrl.replace(/\/$/, '')}/?embed=1`;
+    ? `/gev/index.html?${embedParams.toString()}`
+    : `${gevBaseUrl.replace(/\/$/, '')}/?${embedParams.toString()}`;
 
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden font-mono ${className}`}>

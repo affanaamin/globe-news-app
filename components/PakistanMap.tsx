@@ -460,6 +460,20 @@ export default function PakistanMap({
               <stop offset="60%" stopColor="rgba(234, 88, 12, 0.12)" />
               <stop offset="100%" stopColor="rgba(234, 88, 12, 0)" />
             </radialGradient>
+
+            {/* Cybernetic River Flow Animation Styles */}
+            <style>{`
+              @keyframes riverFlow {
+                from { stroke-dashoffset: 28; }
+                to { stroke-dashoffset: 0; }
+              }
+              .river-flow-dash {
+                animation: riverFlow 2.4s linear infinite;
+              }
+              .river-flow-fast {
+                animation: riverFlow 1.6s linear infinite;
+              }
+            `}</style>
           </defs>
           
           {/* PASS 1: Province fills */}
@@ -555,7 +569,13 @@ export default function PakistanMap({
                   fontFamily="monospace"
                   fontWeight="bold"
                   textAnchor="middle"
+                  className="cursor-pointer hover:fill-yellow-300 pointer-events-auto transition-colors"
+                  onClick={() => {
+                    const k2Pt = PAKISTAN_STRATEGIC_POINTS.find(p => p.id === 'pk-k2');
+                    if (k2Pt) handleHotspotClick(k2Pt, true);
+                  }}
                 >
+                  <title>K2 Summit (8,611m) - Click for 3D Satellite Recon Fly-To</title>
                   ▲ 8,611m [K2]
                 </text>
               )}
@@ -568,7 +588,21 @@ export default function PakistanMap({
                   fontSize="8px"
                   fontFamily="monospace"
                   textAnchor="middle"
+                  className="cursor-pointer hover:fill-amber-300 pointer-events-auto transition-colors"
+                  onClick={() => {
+                    handleHotspotClick({
+                      id: 'pk-nanga-parbat',
+                      name: 'nanga parbat',
+                      displayName: 'Nanga Parbat (8,126m)',
+                      category: 'Critical Infrastructure',
+                      province: 'Gilgit-Baltistan',
+                      coords: { lat: 35.2375, lon: 74.5891, altitude_m: 9000, pitch_deg: -24, heading_deg: 30 },
+                      keywords: ['nanga parbat', '8126m', 'diamer', 'summit'],
+                      description: 'Western anchor of the Himalayas (8,126m) high-altitude relief perspective.',
+                    }, true);
+                  }}
                 >
+                  <title>Nanga Parbat (8,126m) - Click for 3D Satellite Recon Fly-To</title>
                   ▲ 8,126m [NANGA PARBAT]
                 </text>
               )}
@@ -581,7 +615,21 @@ export default function PakistanMap({
                   fontSize="8px"
                   fontFamily="monospace"
                   textAnchor="middle"
+                  className="cursor-pointer hover:fill-amber-300 pointer-events-auto transition-colors"
+                  onClick={() => {
+                    handleHotspotClick({
+                      id: 'pk-tirich-mir',
+                      name: 'tirich mir',
+                      displayName: 'Tirich Mir (7,708m)',
+                      category: 'Critical Infrastructure',
+                      province: 'Khyber Pakhtunkhwa',
+                      coords: { lat: 36.2536, lon: 71.8486, altitude_m: 8500, pitch_deg: -24, heading_deg: 45 },
+                      keywords: ['tirich mir', 'hindu kush', 'chitral', '7708m'],
+                      description: 'Highest peak of the Hindu Kush range (7,708m) high-altitude relief perspective.',
+                    }, true);
+                  }}
                 >
+                  <title>Tirich Mir (7,708m) - Click for 3D Satellite Recon Fly-To</title>
                   ▲ 7,708m [TIRICH MIR]
                 </text>
               )}
@@ -608,6 +656,7 @@ export default function PakistanMap({
                 strokeWidth={2.2}
                 strokeDasharray="10 4"
                 strokeLinecap="round"
+                className="river-flow-dash"
               />
 
               {/* Jhelum River */}
@@ -623,6 +672,7 @@ export default function PakistanMap({
                 stroke="#22d3ee"
                 strokeWidth={1.4}
                 strokeDasharray="6 3"
+                className="river-flow-fast"
               />
 
               {/* Chenab River */}
@@ -638,6 +688,7 @@ export default function PakistanMap({
                 stroke="#22d3ee"
                 strokeWidth={1.5}
                 strokeDasharray="8 3"
+                className="river-flow-dash"
               />
 
               {/* Ravi River */}
@@ -647,6 +698,7 @@ export default function PakistanMap({
                 stroke="#38bdf8"
                 strokeWidth={1.3}
                 strokeDasharray="5 3"
+                className="river-flow-fast"
                 opacity={0.85}
               />
 
@@ -657,6 +709,7 @@ export default function PakistanMap({
                 stroke="#38bdf8"
                 strokeWidth={1.3}
                 strokeDasharray="5 3"
+                className="river-flow-fast"
                 opacity={0.85}
               />
 
@@ -667,6 +720,7 @@ export default function PakistanMap({
                 stroke="#22d3ee"
                 strokeWidth={1.3}
                 strokeDasharray="5 3"
+                className="river-flow-dash"
                 opacity={0.8}
               />
 

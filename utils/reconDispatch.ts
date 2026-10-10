@@ -61,9 +61,14 @@ export const KNOWN_HOTSPOTS: Record<string, LocationCoordinates> = {
   'sindh': { lat: 25.8943, lon: 68.5247, altitude_m: 400_000, pitch_deg: -50 },
   'punjab': { lat: 31.1704, lon: 72.7097, altitude_m: 450_000, pitch_deg: -50 },
   'khyber pakhtunkhwa': { lat: 34.9526, lon: 72.3311, altitude_m: 350_000, pitch_deg: -50 },
+  'kpk': { lat: 34.9526, lon: 72.3311, altitude_m: 350_000, pitch_deg: -50 },
   'balochistan': { lat: 28.4907, lon: 65.0958, altitude_m: 500_000, pitch_deg: -50 },
   'gilgit-baltistan': { lat: 35.8026, lon: 74.9832, altitude_m: 350_000, pitch_deg: -45 },
+  'gilgit baltistan': { lat: 35.8026, lon: 74.9832, altitude_m: 350_000, pitch_deg: -45 },
   'azad kashmir': { lat: 33.9259, lon: 73.7810, altitude_m: 200_000, pitch_deg: -45 },
+  'kashmir': { lat: 33.9259, lon: 73.7810, altitude_m: 200_000, pitch_deg: -45 },
+  'islamabad capital territory': { lat: 33.6844, lon: 73.0479, altitude_m: 2800, pitch_deg: -20, heading_deg: 0 },
+  'ict': { lat: 33.6844, lon: 73.0479, altitude_m: 2800, pitch_deg: -20, heading_deg: 0 },
   
   // Major Geopolitical Sovereign Nations
   'united states': { lat: 37.0902, lon: -95.7129, altitude_m: 3_000_000, pitch_deg: -55 },
@@ -454,6 +459,61 @@ export const PAKISTAN_BORDER_HIGHLIGHT_ANNOTATIONS: Record<string, GevAnnotation
 };
 
 /**
+ * 3D Provincial zone highlight annotations demarcating Pakistani provincial administrative territories
+ */
+export const PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS: Record<string, GevAnnotation> = {
+  balochistan: {
+    type: 'highlight',
+    latitude: 28.4907,
+    longitude: 65.0958,
+    label: '[PROVINCE] BALOCHISTAN SECTOR',
+    color: 'green',
+  },
+  sindh: {
+    type: 'highlight',
+    latitude: 25.8943,
+    longitude: 68.5247,
+    label: '[PROVINCE] SINDH SECTOR',
+    color: 'green',
+  },
+  punjab: {
+    type: 'highlight',
+    latitude: 31.1704,
+    longitude: 72.7097,
+    label: '[PROVINCE] PUNJAB SECTOR',
+    color: 'green',
+  },
+  'khyber pakhtunkhwa': {
+    type: 'highlight',
+    latitude: 34.9526,
+    longitude: 72.3311,
+    label: '[PROVINCE] KHYBER PAKHTUNKHWA SECTOR',
+    color: 'green',
+  },
+  'gilgit-baltistan': {
+    type: 'highlight',
+    latitude: 35.8026,
+    longitude: 74.9832,
+    label: '[PROVINCE] GILGIT-BALTISTAN HIGHLANDS',
+    color: 'cyan',
+  },
+  'azad kashmir': {
+    type: 'highlight',
+    latitude: 33.9259,
+    longitude: 73.7810,
+    label: '[PROVINCE] AZAD KASHMIR SECTOR',
+    color: 'green',
+  },
+  'islamabad capital territory': {
+    type: 'highlight',
+    latitude: 33.6844,
+    longitude: 73.0479,
+    label: '[CAPITAL] ISLAMABAD CAPITAL DISTRICT',
+    color: 'cyan',
+  },
+};
+
+/**
  * Determines whether a location string or point belongs to Pakistan
  */
 export function isPakistanLocation(textOrPoint?: string | PakistanStrategicPoint | null): boolean {
@@ -477,6 +537,7 @@ export function isPakistanLocation(textOrPoint?: string | PakistanStrategicPoint
 export function getPakistanTacticalAnnotations(options?: {
   targetId?: string;
   targetCategory?: string;
+  targetProvince?: string;
   includeCpec?: boolean;
 }): GevAnnotation[] {
   const annotations: GevAnnotation[] = [];
@@ -486,6 +547,27 @@ export function getPakistanTacticalAnnotations(options?: {
   }
 
   const targetId = options?.targetId?.toLowerCase();
+  const targetProvince = options?.targetProvince?.toLowerCase();
+
+  // 1. Provincial zone demarcation
+  const provinceQuery = targetProvince || targetId;
+  if (provinceQuery) {
+    for (const [key, zoneAnno] of Object.entries(PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS)) {
+      if (
+        provinceQuery === key ||
+        provinceQuery.includes(key) ||
+        (key.includes('-') && provinceQuery.includes(key.replace('-', ' '))) ||
+        (key === 'khyber pakhtunkhwa' && provinceQuery.includes('kpk')) ||
+        (key === 'azad kashmir' && provinceQuery.includes('kashmir')) ||
+        (key === 'islamabad capital territory' && (provinceQuery.includes('islamabad') || provinceQuery === 'ict'))
+      ) {
+        annotations.push(zoneAnno);
+        break;
+      }
+    }
+  }
+
+  // 2. Critical maritime corridors & border checkpoints
   if (targetId) {
     if (targetId.includes('gwd') || targetId.includes('gwadar')) {
       annotations.push(GWADAR_MARITIME_CORRIDOR_ANNOTATION);
@@ -501,6 +583,58 @@ export function getPakistanTacticalAnnotations(options?: {
   }
 
   return annotations;
+}
+
+/**
+ * Builds a God's Eye View payload optimized for a specific Pakistan province
+ */
+export function buildProvinceReconView(province: string): GevView {
+  const cleanProvince = province.trim();
+  const lower = cleanProvince.toLowerCase();
+  const coords = KNOWN_HOTSPOTS[lower] || 
+    (lower.includes('balochistan') ? KNOWN_HOTSPOTS['balochistan'] :
+     lower.includes('sindh') ? KNOWN_HOTSPOTS['sindh'] :
+     lower.includes('punjab') ? KNOWN_HOTSPOTS['punjab'] :
+     lower.includes('khyber') || lower.includes('kpk') ? KNOWN_HOTSPOTS['khyber pakhtunkhwa'] :
+     lower.includes('gilgit') ? KNOWN_HOTSPOTS['gilgit-baltistan'] :
+     lower.includes('kashmir') ? KNOWN_HOTSPOTS['azad kashmir'] :
+     lower.includes('islamabad') ? KNOWN_HOTSPOTS['islamabad'] :
+     KNOWN_HOTSPOTS['pakistan']);
+
+  const annotations: GevAnnotation[] = [
+    {
+      type: 'pin',
+      latitude: coords.lat,
+      longitude: coords.lon,
+      label: `[PROVINCE] ${cleanProvince.toUpperCase()}`.slice(0, 110),
+      color: 'primary',
+    },
+    ...getPakistanTacticalAnnotations({ targetProvince: lower, includeCpec: true }),
+  ];
+
+  const regionalAltitude = (coords.altitude_m && coords.altitude_m > 50_000)
+    ? coords.altitude_m
+    : (lower.includes('islamabad') ? 220_000 : 380_000);
+
+  const regionalPitch = (coords.altitude_m && coords.altitude_m > 50_000 && coords.pitch_deg !== undefined)
+    ? coords.pitch_deg
+    : -45;
+
+  const camera: GevCamera = {
+    lat: coords.lat,
+    lon: coords.lon,
+    altitude_m: regionalAltitude,
+    pitch_deg: regionalPitch,
+    heading_deg: coords.heading_deg !== undefined ? coords.heading_deg : 0,
+  };
+
+  return {
+    camera,
+    layers: ['flights', 'ais-live-vessels', 'satellites', 'earthquakes'],
+    style: 'normal',
+    map: 'photoreal',
+    annotations,
+  };
 }
 
 export interface ArticleReconInput {
@@ -622,10 +756,38 @@ export function buildArticleReconView({
     heading_deg: 0,
   };
 
-  // Check known hotspots in text
+  // Check known hotspots in text, prioritizing specific landmarks/cities over broad sovereign nations and provinces
+  const BROAD_COUNTRIES = new Set([
+    'pakistan', 'united states', 'usa', 'united kingdom', 'uk', 'china',
+    'russia', 'ukraine', 'india', 'iran', 'israel', 'japan', 'germany',
+    'france', 'turkey', 'saudi arabia', 'united arab emirates', 'uae',
+    'south korea', 'taiwan', 'canada', 'brazil', 'australia', 'egypt',
+    'afghanistan', 'syria', 'iraq', 'yemen', 'lebanon'
+  ]);
+
+  const PROVINCE_NAMES = new Set([
+    'sindh', 'punjab', 'khyber pakhtunkhwa', 'kpk', 'balochistan',
+    'gilgit-baltistan', 'gilgit baltistan', 'azad kashmir', 'kashmir',
+    'islamabad capital territory', 'ict'
+  ]);
+
+  const sortedHotspotEntries = Object.entries(KNOWN_HOTSPOTS).sort(([a], [b]) => {
+    const aIsCountry = BROAD_COUNTRIES.has(a);
+    const bIsCountry = BROAD_COUNTRIES.has(b);
+    const aIsProv = PROVINCE_NAMES.has(a);
+    const bIsProv = PROVINCE_NAMES.has(b);
+
+    const aTier = aIsCountry ? 3 : aIsProv ? 2 : 1;
+    const bTier = bIsCountry ? 3 : bIsProv ? 2 : 1;
+
+    if (aTier !== bTier) return aTier - bTier;
+    return b.length - a.length;
+  });
+
   let detectedHotspotKey: string | null = null;
-  for (const [key, coords] of Object.entries(KNOWN_HOTSPOTS)) {
-    const regex = new RegExp(`\\b${key}\\b`, 'i');
+  for (const [key, coords] of sortedHotspotEntries) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
     if (regex.test(combinedText)) {
       targetLocation = coords;
       detectedHotspotKey = key;

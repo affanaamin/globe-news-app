@@ -5,11 +5,14 @@ import {
   PAKISTAN_STRATEGIC_POINTS, 
   searchPakistanHotspots, 
   buildHotspotReconView,
+  buildProvinceReconView,
+  buildArticleReconView,
   getKnownHotspot,
   CPEC_ROUTE_WAYPOINTS,
   CPEC_ROUTE_ANNOTATION,
   GWADAR_MARITIME_CORRIDOR_ANNOTATION,
   KARACHI_COASTAL_CORRIDOR_ANNOTATION,
+  PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS,
   getPakistanTacticalAnnotations,
   isPakistanLocation
 } from '../utils/reconDispatch.ts';
@@ -382,3 +385,114 @@ test('GEV viewer and scene configure terrain exaggeration 1.25, enableLighting, 
   assert.ok(buildGev.includes('CESIUM_ION_TOKEN'), 'build-gev.mjs must pass CESIUM_ION_TOKEN');
   assert.ok(buildGev.includes('GOOGLE_MAPS_API_KEY'), 'build-gev.mjs must pass GOOGLE_MAPS_API_KEY');
 });
+
+test('PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS covers all 7 provinces and territories', () => {
+  const provinces = [
+    'balochistan',
+    'sindh',
+    'punjab',
+    'khyber pakhtunkhwa',
+    'gilgit-baltistan',
+    'azad kashmir',
+    'islamabad capital territory'
+  ];
+
+  for (const prov of provinces) {
+    const anno = PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS[prov];
+    assert.ok(anno, `Must have zone highlight annotation for ${prov}`);
+    assert.equal(anno.type, 'highlight');
+    assert.ok(typeof anno.latitude === 'number' && anno.latitude > 20 && anno.latitude < 38);
+    assert.ok(typeof anno.longitude === 'number' && anno.longitude > 60 && anno.longitude < 78);
+    assert.ok(anno.label?.length && anno.label.length <= 120);
+  }
+});
+
+test('buildProvinceReconView produces valid GEV schema with CPEC route vector and provincial zone highlights', () => {
+  const provinces = [
+    'Balochistan',
+    'Sindh',
+    'Punjab',
+    'Khyber Pakhtunkhwa',
+    'Gilgit-Baltistan',
+    'Azad Kashmir',
+    'Islamabad Capital Territory'
+  ];
+
+  for (const prov of provinces) {
+    const view = buildProvinceReconView(prov);
+    assert.ok(view);
+    assert.ok(view.camera.lat >= 23 && view.camera.lat <= 38, `Valid latitude for ${prov}`);
+    assert.ok(view.camera.lon >= 60 && view.camera.lon <= 78, `Valid longitude for ${prov}`);
+    assert.ok(view.camera.altitude_m && view.camera.altitude_m >= 150_000, `High altitude perspective for ${prov}`);
+    assert.ok(view.camera.pitch_deg && view.camera.pitch_deg <= -40, `Oblique perspective for ${prov}`);
+
+    // Must include CPEC route annotation
+    assert.ok(
+      view.annotations?.some(a => a.type === 'route' && a.label?.includes('CPEC')),
+      `Province ${prov} view must include CPEC route vector`
+    );
+
+    // Must include provincial zone highlight
+    assert.ok(
+      view.annotations?.some(a => a.type === 'highlight' && (a.label?.includes('PROVINCE') || a.label?.includes('CAPITAL'))),
+      `Province ${prov} view must include provincial zone highlight`
+    );
+
+    // Schema validation
+    const validated = createView(view);
+    assert.ok(validated, `GEV schema validation succeeds for ${prov}`);
+  }
+});
+
+test('buildArticleReconView prioritizes specific landmarks without being shadowed by "Pakistan" in headlines', () => {
+  // 1. Gwadar Port mentioned alongside Pakistan
+  const gwdView = buildArticleReconView({
+    title: 'Pakistan Navy commissions advanced naval surveillance craft at Gwadar Port',
+    country: 'Pakistan',
+  });
+  assert.equal(gwdView.camera.lat, KNOWN_HOTSPOTS['gwadar'].lat, 'Must target Gwadar lat');
+  assert.equal(gwdView.camera.lon, KNOWN_HOTSPOTS['gwadar'].lon, 'Must target Gwadar lon');
+  assert.equal(gwdView.camera.altitude_m, 2200, 'Must use tuned 2,200m Gwadar altitude');
+  assert.equal(gwdView.camera.pitch_deg, -18, 'Must use tuned -18° Gwadar pitch');
+  assert.equal(gwdView.camera.heading_deg, 45, 'Must use tuned 45° Gwadar heading');
+  assert.ok(gwdView.annotations?.some(a => a.label?.includes('GWADAR')), 'Includes Gwadar maritime highlight');
+
+  // 2. Islamabad mentioned alongside Pakistan
+  const isbView = buildArticleReconView({
+    title: 'Federal government convenes bilateral summit in Islamabad, Pakistan',
+    country: 'Pakistan',
+  });
+  assert.equal(isbView.camera.lat, KNOWN_HOTSPOTS['islamabad'].lat, 'Must target Islamabad lat');
+  assert.equal(isbView.camera.lon, KNOWN_HOTSPOTS['islamabad'].lon, 'Must target Islamabad lon');
+  assert.equal(isbView.camera.altitude_m, 2800, 'Must use tuned 2,800m Islamabad Margalla altitude');
+  assert.equal(isbView.camera.pitch_deg, -20, 'Must use tuned -20° Islamabad pitch');
+
+  // 3. Tarbela Dam mentioned alongside Pakistan
+  const trbView = buildArticleReconView({
+    title: 'Water flow reaches seasonal capacity at Tarbela Dam in northern Pakistan',
+    country: 'Pakistan',
+  });
+  assert.equal(trbView.camera.lat, KNOWN_HOTSPOTS['tarbela dam'].lat, 'Must target Tarbela Dam lat');
+  assert.equal(trbView.camera.altitude_m, 3200, 'Must use tuned 3,200m Tarbela altitude');
+  assert.equal(trbView.camera.pitch_deg, -22, 'Must use tuned -22° Tarbela pitch');
+
+  // 4. K2 summit mentioned alongside Pakistan
+  const k2View = buildArticleReconView({
+    title: 'Mountaineering expedition establishes high camp below K2 summit in Pakistan',
+    country: 'Pakistan',
+  });
+  assert.equal(k2View.camera.lat, KNOWN_HOTSPOTS['k2'].lat, 'Must target K2 lat');
+  assert.equal(k2View.camera.altitude_m, 9500, 'Must use tuned 9,500m K2/Baltoro altitude');
+  assert.equal(k2View.camera.pitch_deg, -24, 'Must use tuned -24° K2 pitch');
+  assert.equal(k2View.camera.heading_deg, 25, 'Must use tuned 25° K2 heading');
+
+  // 5. Generic Pakistan headline with no specific landmark targets country overview
+  const pkOverview = buildArticleReconView({
+    title: 'Pakistan hosts international digital economic forum',
+    country: 'Pakistan',
+  });
+  assert.equal(pkOverview.camera.lat, KNOWN_HOTSPOTS['pakistan'].lat, 'Must target Pakistan country center');
+  assert.equal(pkOverview.camera.altitude_m, KNOWN_HOTSPOTS['pakistan'].altitude_m, 'Must use high strategic altitude');
+  assert.ok(pkOverview.annotations?.some(a => a.type === 'route'), 'Includes 3D CPEC vector artery');
+});
+
