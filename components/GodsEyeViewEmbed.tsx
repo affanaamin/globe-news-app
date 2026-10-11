@@ -244,8 +244,19 @@ export default function GodsEyeViewEmbed({
           applyingTimerRef.current = null;
         }
         setIsApplying(false);
+        const appliedData = data as GevViewAppliedMessage;
+        // If a requested map switch failed (e.g. photoreal without 3D tiles key), sync telemetry back to active fallback
+        if (appliedData.steps) {
+          const mapStep = appliedData.steps.find((s) => s.step === 'set_map_stack');
+          if (mapStep && !mapStep.ok) {
+            setTelemetryState((prev) => ({
+              ...prev,
+              map: prev.map === 'photoreal' ? 'sentinel-2' : prev.map,
+            }));
+          }
+        }
         if (onViewAppliedRef.current) {
-          onViewAppliedRef.current(data as GevViewAppliedMessage);
+          onViewAppliedRef.current(appliedData);
         }
       }
     };
@@ -379,7 +390,10 @@ export default function GodsEyeViewEmbed({
 
   // Reset to default Pakistan strategic overview position
   const handleResetCamera = () => {
-    const overviewView: GevView = buildDefaultPakistanReconView();
+    const overviewView: GevView = {
+      ...buildDefaultPakistanReconView(),
+      map: telemetryState.map || 'sentinel-2',
+    };
     dispatchView(overviewView);
   };
 

@@ -122,6 +122,10 @@ export default function Home() {
     }
 
     if (country) {
+      if (country.toLowerCase() === 'pakistan') {
+        setTargetReconView(buildDefaultPakistanReconView());
+        return;
+      }
       const isPk = isPakistanLocation(country);
       const hotspot = getKnownHotspot(country);
       if (hotspot) {
@@ -135,7 +139,7 @@ export default function Home() {
           },
           layers: ['flights', 'ais-live-vessels', 'satellites'],
           style: 'normal',
-          map: 'photoreal',
+          map: isPk ? 'sentinel-2' : 'photoreal',
           annotations: [
             {
               type: 'pin',
@@ -148,6 +152,8 @@ export default function Home() {
           ],
         });
       }
+    } else {
+      setTargetReconView(buildDefaultPakistanReconView());
     }
   };
 

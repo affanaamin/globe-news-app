@@ -555,6 +555,8 @@ test('Gods Eye View defaults directly to Pakistan strategic vantage with Sentine
   // Keyless default must be sentinel-2 (not esri-imagery or Texas)
   const keylessSources = createDefaultMapSources();
   assert.equal(keylessSources.defaultId, 'sentinel-2', 'Keyless defaultId must be sentinel-2 for fresh imagery');
+  assert.equal(keylessSources.unknownId, 'sentinel-2', 'Keyless unknownId must fall back to sentinel-2');
+  assert.equal(keylessSources.recoveryId, 'esri-imagery', 'Keyless recoveryId must fall back to esri-imagery');
   const sentinelSource = keylessSources.sources.find(s => s.descriptor.id === 'sentinel-2');
   assert.ok(sentinelSource, 'Keyless sources must include sentinel-2 source');
   assert.equal(sentinelSource.available, true, 'Sentinel-2 must be available keylessly');
@@ -564,6 +566,8 @@ test('Gods Eye View defaults directly to Pakistan strategic vantage with Sentine
   // Credentialed mode sets photoreal as defaultId
   const keyedSources = createDefaultMapSources({ googleTileset: { show: true } });
   assert.equal(keyedSources.defaultId, 'photoreal', 'Keyed defaultId remains photoreal 3D');
+  assert.equal(keyedSources.unknownId, 'photoreal', 'Keyed unknownId remains photoreal');
+  assert.equal(keyedSources.recoveryId, 'photoreal', 'Keyed recoveryId remains photoreal');
 
   // Verify Sentinel imagery factory
   assert.ok(SENTINEL_ATTRIBUTION_HTML.includes('Sentinel-2 cloudless'));
@@ -571,6 +575,7 @@ test('Gods Eye View defaults directly to Pakistan strategic vantage with Sentine
   const provider = createSentinelImagery();
   assert.ok(provider, 'createSentinelImagery must construct a valid provider');
   assert.ok(provider.url.includes('s2cloudless'), 'Provider URL must target EOX Sentinel-2 cloudless mosaic');
+  assert.equal(provider.maximumLevel, 18, 'Must configure maximumLevel 18 for EOX WMTS pyramid');
 });
 
 
