@@ -19,6 +19,14 @@ export interface PakistanStrategicPoint {
   description: string;
 }
 
+export const DEFAULT_PAKISTAN_CAMERA: GevCamera = {
+  lat: 30.3753,
+  lon: 69.3451,
+  altitude_m: 1_600_000,
+  heading_deg: 0,
+  pitch_deg: -55,
+};
+
 export const KNOWN_HOTSPOTS: Record<string, LocationCoordinates> = {
   // Pakistan regions & cities - cinematic oblique angles and tuned altitude
   'pakistan': { lat: 30.3753, lon: 69.3451, altitude_m: 900_000, pitch_deg: -55, heading_deg: 0 },
@@ -539,6 +547,7 @@ export function getPakistanTacticalAnnotations(options?: {
   targetCategory?: string;
   targetProvince?: string;
   includeCpec?: boolean;
+  includeProvinces?: boolean;
 }): GevAnnotation[] {
   const annotations: GevAnnotation[] = [];
   const includeCpec = options?.includeCpec !== false;
@@ -550,19 +559,23 @@ export function getPakistanTacticalAnnotations(options?: {
   const targetProvince = options?.targetProvince?.toLowerCase();
 
   // 1. Provincial zone demarcation
-  const provinceQuery = targetProvince || targetId;
-  if (provinceQuery) {
-    for (const [key, zoneAnno] of Object.entries(PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS)) {
-      if (
-        provinceQuery === key ||
-        provinceQuery.includes(key) ||
-        (key.includes('-') && provinceQuery.includes(key.replace('-', ' '))) ||
-        (key === 'khyber pakhtunkhwa' && provinceQuery.includes('kpk')) ||
-        (key === 'azad kashmir' && provinceQuery.includes('kashmir')) ||
-        (key === 'islamabad capital territory' && (provinceQuery.includes('islamabad') || provinceQuery === 'ict'))
-      ) {
-        annotations.push(zoneAnno);
-        break;
+  if (options?.includeProvinces || (!targetId && !targetProvince)) {
+    annotations.push(...Object.values(PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS));
+  } else {
+    const provinceQuery = targetProvince || targetId;
+    if (provinceQuery) {
+      for (const [key, zoneAnno] of Object.entries(PAKISTAN_PROVINCIAL_ZONE_ANNOTATIONS)) {
+        if (
+          provinceQuery === key ||
+          provinceQuery.includes(key) ||
+          (key.includes('-') && provinceQuery.includes(key.replace('-', ' '))) ||
+          (key === 'khyber pakhtunkhwa' && provinceQuery.includes('kpk')) ||
+          (key === 'azad kashmir' && provinceQuery.includes('kashmir')) ||
+          (key === 'islamabad capital territory' && (provinceQuery.includes('islamabad') || provinceQuery === 'ict'))
+        ) {
+          annotations.push(zoneAnno);
+          break;
+        }
       }
     }
   }
@@ -583,6 +596,19 @@ export function getPakistanTacticalAnnotations(options?: {
   }
 
   return annotations;
+}
+
+/**
+ * Builds the default God's Eye View payload centered over Pakistan with strategic layers & CPEC vectors
+ */
+export function buildDefaultPakistanReconView(): GevView {
+  return {
+    camera: { ...DEFAULT_PAKISTAN_CAMERA },
+    layers: ['flights', 'ais-live-vessels', 'earthquakes'],
+    style: 'normal',
+    map: 'sentinel-2',
+    annotations: getPakistanTacticalAnnotations({ includeCpec: true }),
+  };
 }
 
 /**

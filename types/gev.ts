@@ -16,11 +16,12 @@ export const GEV_AVAILABLE_STYLES = [
 export type GevStyle = (typeof GEV_AVAILABLE_STYLES)[number];
 
 export const GEV_AVAILABLE_MAPS = [
+  'sentinel-2',
   'photoreal',
-  'bing-aerial',
-  'bing-labels',
   'esri-imagery',
   'osm',
+  'bing-aerial',
+  'bing-labels',
 ] as const;
 
 export type GevMap = (typeof GEV_AVAILABLE_MAPS)[number];

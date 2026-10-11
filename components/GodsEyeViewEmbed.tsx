@@ -18,18 +18,36 @@ import {
   RefreshCw,
   Terminal,
   Settings,
-  Route
+  Route,
+  Map as MapIcon
 } from 'lucide-react';
 import { 
   GevView, 
   GevStyle, 
+  GevMap,
   GevViewMessage, 
   GEV_AVAILABLE_STYLES, 
   GEV_AVAILABLE_LAYERS,
   GevViewAppliedMessage,
   GevAnnotation
 } from '@/types/gev';
-import { CPEC_ROUTE_ANNOTATION } from '@/utils/reconDispatch';
+import { 
+  CPEC_ROUTE_ANNOTATION, 
+  DEFAULT_PAKISTAN_CAMERA, 
+  buildDefaultPakistanReconView, 
+  getPakistanTacticalAnnotations 
+} from '@/utils/reconDispatch';
+
+const HUD_MAP_OPTIONS: Array<{
+  id: GevMap;
+  label: string;
+  tooltip: string;
+}> = [
+  { id: 'sentinel-2', label: 'SENTINEL-2', tooltip: 'Fresh ESA Copernicus satellite cloudless pass (Keyless)' },
+  { id: 'photoreal', label: 'GOOGLE 3D', tooltip: 'Photoreal 3D mesh tiles (Google credentials required)' },
+  { id: 'esri-imagery', label: 'ESRI SAT', tooltip: 'High-altitude Maxar composite' },
+  { id: 'osm', label: 'OSM TACTICAL', tooltip: 'OpenStreetMap street and infrastructure layout' },
+];
 
 interface GodsEyeViewEmbedProps {
   /** The target view dispatched from news headline selection or external controls */
@@ -102,7 +120,7 @@ export default function GodsEyeViewEmbed({
   const [isApplying, setIsApplying] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // Maintain active telemetry and active annotations so HUD actions don't wipe headline pins
+  // Maintain active telemetry, basemap and annotations so HUD actions don't wipe headline pins
   const [telemetryState, setTelemetryState] = useState<{
     lat: number;
     lon: number;
@@ -111,16 +129,18 @@ export default function GodsEyeViewEmbed({
     heading: number;
     style: GevStyle;
     layers: string[];
+    map: GevMap;
     annotations: GevAnnotation[];
   }>({
-    lat: 30.3753,
-    lon: 69.3451,
-    alt: 800_000,
-    pitch: -55,
-    heading: 0,
+    lat: DEFAULT_PAKISTAN_CAMERA.lat,
+    lon: DEFAULT_PAKISTAN_CAMERA.lon,
+    alt: DEFAULT_PAKISTAN_CAMERA.altitude_m ?? 1_600_000,
+    pitch: DEFAULT_PAKISTAN_CAMERA.pitch_deg ?? -55,
+    heading: DEFAULT_PAKISTAN_CAMERA.heading_deg ?? 0,
     style: 'normal',
-    layers: ['flights', 'ais-live-vessels', 'satellites'],
-    annotations: [],
+    layers: ['flights', 'ais-live-vessels', 'earthquakes'],
+    map: 'sentinel-2',
+    annotations: getPakistanTacticalAnnotations({ includeCpec: true }),
   });
 
   const pendingViewRef = useRef<GevView | null>(null);
@@ -128,11 +148,13 @@ export default function GodsEyeViewEmbed({
   const applyingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const onReadyRef = useRef(onReady);
   const onViewAppliedRef = useRef(onViewApplied);
+  const targetViewRef = useRef(targetView);
 
   useEffect(() => {
     onReadyRef.current = onReady;
     onViewAppliedRef.current = onViewApplied;
-  }, [onReady, onViewApplied]);
+    targetViewRef.current = targetView;
+  }, [onReady, onViewApplied, targetView]);
 
   // Keep isReadyRef in sync with isReady outside of render phase
   useEffect(() => {
@@ -181,6 +203,7 @@ export default function GodsEyeViewEmbed({
         heading: view.camera.heading_deg ?? prev.heading,
         style: view.style || prev.style,
         layers: view.layers || prev.layers,
+        map: view.map || prev.map,
         annotations: view.annotations !== undefined ? view.annotations : prev.annotations,
       }));
     } catch (err) {
@@ -211,12 +234,10 @@ export default function GodsEyeViewEmbed({
         }
         if (onReadyRef.current) onReadyRef.current();
 
-        // Dispatch queued view if available
-        if (pendingViewRef.current) {
-          const nextView = pendingViewRef.current;
-          pendingViewRef.current = null;
-          dispatchView(nextView);
-        }
+        // Dispatch queued view if available, or default Pakistan vantage if no headline target
+        const viewToDispatch = pendingViewRef.current || targetViewRef.current || buildDefaultPakistanReconView();
+        pendingViewRef.current = null;
+        dispatchView(viewToDispatch);
       } else if (data.type === 'gev:view-applied') {
         if (applyingTimerRef.current) {
           clearTimeout(applyingTimerRef.current);
@@ -265,7 +286,7 @@ export default function GodsEyeViewEmbed({
     }
   }, [targetView, dispatchView]);
 
-  // Layer toggle handler: preserves active annotations and camera angles
+  // Layer toggle handler: preserves active annotations, basemap, and camera angles
   const handleToggleLayer = (layerId: string) => {
     const current = new Set(telemetryState.layers);
     if (current.has(layerId)) {
@@ -285,12 +306,12 @@ export default function GodsEyeViewEmbed({
       style: telemetryState.style,
       layers: updatedLayers,
       annotations: telemetryState.annotations,
-      map: 'photoreal',
+      map: telemetryState.map,
     };
     dispatchView(updatedView);
   };
 
-  // Style change handler: preserves active annotations and camera angles
+  // Style change handler: preserves active annotations, basemap, and camera angles
   const handleChangeStyle = (style: GevStyle) => {
     const updatedView: GevView = {
       camera: {
@@ -303,7 +324,25 @@ export default function GodsEyeViewEmbed({
       style,
       layers: telemetryState.layers,
       annotations: telemetryState.annotations,
-      map: 'photoreal',
+      map: telemetryState.map,
+    };
+    dispatchView(updatedView);
+  };
+
+  // Imagery / Basemap switcher handler: dispatches stack change via gev:view
+  const handleChangeMap = (mapId: GevMap) => {
+    const updatedView: GevView = {
+      camera: {
+        lat: telemetryState.lat,
+        lon: telemetryState.lon,
+        altitude_m: telemetryState.alt,
+        pitch_deg: telemetryState.pitch,
+        heading_deg: telemetryState.heading,
+      },
+      style: telemetryState.style,
+      layers: telemetryState.layers,
+      annotations: telemetryState.annotations,
+      map: mapId,
     };
     dispatchView(updatedView);
   };
@@ -333,26 +372,14 @@ export default function GodsEyeViewEmbed({
       style: telemetryState.style,
       layers: telemetryState.layers,
       annotations: updatedAnnotations,
-      map: 'photoreal',
+      map: telemetryState.map,
     };
     dispatchView(updatedView);
   };
 
-  // Reset to default strategic overview position
+  // Reset to default Pakistan strategic overview position
   const handleResetCamera = () => {
-    const overviewView: GevView = {
-      camera: {
-        lat: 30.3753,
-        lon: 69.3451,
-        altitude_m: 1_200_000,
-        pitch_deg: -55,
-        heading_deg: 0,
-      },
-      layers: ['flights', 'ais-live-vessels', 'satellites'],
-      style: 'normal',
-      map: 'photoreal',
-      annotations: [CPEC_ROUTE_ANNOTATION],
-    };
+    const overviewView: GevView = buildDefaultPakistanReconView();
     dispatchView(overviewView);
   };
 
@@ -409,6 +436,7 @@ export default function GodsEyeViewEmbed({
             <span>LAT: <span className="text-cyan-300 font-semibold">{telemetryState.lat.toFixed(2)}°</span></span>
             <span>LON: <span className="text-cyan-300 font-semibold">{telemetryState.lon.toFixed(2)}°</span></span>
             <span>ALT: <span className="text-cyan-300 font-semibold">{(telemetryState.alt / 1000).toFixed(1)}km</span></span>
+            <span className="hidden md:inline">MAP: <span className="text-cyan-300 font-semibold">{telemetryState.map.toUpperCase()}</span></span>
             <span className="hidden md:inline">PITCH: <span className="text-cyan-300 font-semibold">{telemetryState.pitch.toFixed(0)}°</span></span>
             <span className="hidden md:inline">HDG: <span className="text-cyan-300 font-semibold">{telemetryState.heading.toFixed(0)}°</span></span>
           </div>
@@ -420,8 +448,34 @@ export default function GodsEyeViewEmbed({
           )}
         </div>
 
-        {/* Center: Sensor Mode Switcher & CPEC 3D Vector Toggle */}
-        <div className="pointer-events-auto flex items-center gap-2">
+        {/* Center: Basemap Switcher & Sensor Mode Switcher & CPEC 3D Vector Toggle */}
+        <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+          {/* Basemap / Satellite Switcher */}
+          <div className="flex items-center gap-1.5 bg-black/85 backdrop-blur-md border border-cyan-500/40 p-1 rounded shadow-[0_0_15px_rgba(0,255,255,0.15)] text-xs">
+            <span className="text-gray-400 text-[10px] px-2 font-bold uppercase tracking-wider flex items-center gap-1">
+              <MapIcon className="w-3 h-3 text-cyan-400" /> IMAGERY:
+            </span>
+            {HUD_MAP_OPTIONS.map((opt) => {
+              const isActive = telemetryState.map === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleChangeMap(opt.id)}
+                  title={opt.tooltip}
+                  className={`px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider transition-all ${
+                    isActive
+                      ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(0,255,255,0.35)]'
+                      : 'text-gray-400 hover:text-cyan-300 hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sensor Mode Switcher */}
           <div className="flex items-center gap-1.5 bg-black/85 backdrop-blur-md border border-green-500/40 p-1 rounded shadow-[0_0_15px_rgba(0,255,128,0.15)] text-xs">
             <span className="text-gray-400 text-[10px] px-2 font-bold uppercase tracking-wider flex items-center gap-1">
               <Eye className="w-3 h-3 text-green-400" /> SENSOR:

@@ -496,3 +496,81 @@ test('buildArticleReconView prioritizes specific landmarks without being shadowe
   assert.ok(pkOverview.annotations?.some(a => a.type === 'route'), 'Includes 3D CPEC vector artery');
 });
 
+test('Gods Eye View defaults directly to Pakistan strategic vantage with Sentinel-2 basemap', async () => {
+  const { DEFAULT_PAKISTAN_CAMERA, buildDefaultPakistanReconView, getPakistanTacticalAnnotations } = await import('../utils/reconDispatch.ts');
+  const { createView } = await import('../gods-eye-view/src/view/index.js');
+  const { CAMERA_PRESETS, flyToPakistan } = await import('../gods-eye-view/src/camera.js');
+  const { MAP_STACKS } = await import('../gods-eye-view/src/maps/catalog.js');
+  const { createDefaultMapSources } = await import('../gods-eye-view/src/maps/defaultSources.js');
+  const { createSentinelImagery, SENTINEL_ATTRIBUTION_HTML } = await import('../gods-eye-view/src/maps/imagery.js');
+  const { GEV_AVAILABLE_MAPS } = await import('../types/gev.ts');
+
+  // 1. Verify DEFAULT_PAKISTAN_CAMERA specifications
+  assert.equal(DEFAULT_PAKISTAN_CAMERA.lat, 30.3753);
+  assert.equal(DEFAULT_PAKISTAN_CAMERA.lon, 69.3451);
+  assert.equal(DEFAULT_PAKISTAN_CAMERA.altitude_m, 1600000);
+  assert.equal(DEFAULT_PAKISTAN_CAMERA.heading_deg, 0);
+  assert.equal(DEFAULT_PAKISTAN_CAMERA.pitch_deg, -55);
+
+  const directTactical = getPakistanTacticalAnnotations({ includeCpec: true });
+  assert.ok(directTactical.length >= 8, 'getPakistanTacticalAnnotations with includeCpec yields CPEC route and all provincial zones');
+
+  // 2. Verify buildDefaultPakistanReconView payload
+  const defaultView = buildDefaultPakistanReconView();
+  assert.deepEqual(defaultView.camera, DEFAULT_PAKISTAN_CAMERA);
+  assert.deepEqual(defaultView.layers, ['flights', 'ais-live-vessels', 'earthquakes']);
+  assert.equal(defaultView.map, 'sentinel-2');
+  assert.equal(defaultView.style, 'normal');
+
+  // Verify pre-warmed tactical annotations: CPEC route + all provincial zones
+  assert.ok(defaultView.annotations.some(a => a.type === 'route' && a.label?.includes('CPEC')), 'Pre-warmed with CPEC route');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('BALOCHISTAN')), 'Includes Balochistan provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('SINDH')), 'Includes Sindh provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('PUNJAB')), 'Includes Punjab provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('KHYBER PAKHTUNKHWA')), 'Includes KPK provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('GILGIT-BALTISTAN')), 'Includes GB provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('AZAD KASHMIR')), 'Includes AJK provincial highlight');
+  assert.ok(defaultView.annotations.some(a => a.label?.includes('ISLAMABAD')), 'Includes ICT provincial highlight');
+
+  // 3. Schema validation with GEV's createView
+  const validated = createView(defaultView);
+  assert.ok(validated, 'createView must accept default Pakistan view');
+  assert.equal(validated.map, 'sentinel-2', 'createView preserves sentinel-2 map stack');
+  assert.equal(validated.camera.altitude_m, 1600000);
+
+  // 4. GEV standalone camera presets
+  assert.ok(CAMERA_PRESETS.pakistan, 'CAMERA_PRESETS must include pakistan');
+  assert.equal(typeof flyToPakistan, 'function', 'camera.js must export flyToPakistan');
+
+  // 5. Sentinel-2 catalog & keyless default source verification
+  const sentinelStack = MAP_STACKS.find(s => s.id === 'sentinel-2');
+  assert.ok(sentinelStack, 'MAP_STACKS must contain sentinel-2');
+  assert.equal(sentinelStack.label, 'Sentinel-2 (ESA)');
+  assert.equal(sentinelStack.shortLabel, 'Sentinel');
+  assert.equal(sentinelStack.kind, 'sentinel-2');
+  assert.equal(sentinelStack.requiresIon, false);
+
+  assert.ok(GEV_AVAILABLE_MAPS.includes('sentinel-2'), 'types/gev.ts must export sentinel-2 in GEV_AVAILABLE_MAPS');
+
+  // Keyless default must be sentinel-2 (not esri-imagery or Texas)
+  const keylessSources = createDefaultMapSources();
+  assert.equal(keylessSources.defaultId, 'sentinel-2', 'Keyless defaultId must be sentinel-2 for fresh imagery');
+  const sentinelSource = keylessSources.sources.find(s => s.descriptor.id === 'sentinel-2');
+  assert.ok(sentinelSource, 'Keyless sources must include sentinel-2 source');
+  assert.equal(sentinelSource.available, true, 'Sentinel-2 must be available keylessly');
+  assert.ok(sentinelSource.constructionFallback, 'Sentinel-2 must have construction fallback to esri-imagery');
+  assert.equal(sentinelSource.constructionFallback.id, 'esri-imagery');
+
+  // Credentialed mode sets photoreal as defaultId
+  const keyedSources = createDefaultMapSources({ googleTileset: { show: true } });
+  assert.equal(keyedSources.defaultId, 'photoreal', 'Keyed defaultId remains photoreal 3D');
+
+  // Verify Sentinel imagery factory
+  assert.ok(SENTINEL_ATTRIBUTION_HTML.includes('Sentinel-2 cloudless'));
+  assert.equal(typeof createSentinelImagery, 'function');
+  const provider = createSentinelImagery();
+  assert.ok(provider, 'createSentinelImagery must construct a valid provider');
+  assert.ok(provider.url.includes('s2cloudless'), 'Provider URL must target EOX Sentinel-2 cloudless mosaic');
+});
+
+

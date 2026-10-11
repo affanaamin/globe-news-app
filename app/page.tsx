@@ -24,6 +24,7 @@ import {
   PakistanStrategicPoint, 
   buildHotspotReconView,
   buildProvinceReconView,
+  buildDefaultPakistanReconView,
   getPakistanTacticalAnnotations,
   isPakistanLocation
 } from '@/utils/reconDispatch';
@@ -45,7 +46,7 @@ export default function Home() {
   const [mentions, setMentions] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'global' | 'pakistan'>('global');
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
-  const [targetReconView, setTargetReconView] = useState<GevView | null>(null);
+  const [targetReconView, setTargetReconView] = useState<GevView | null>(() => buildDefaultPakistanReconView());
   const [activeArticleUrl, setActiveArticleUrl] = useState<string | null>(null);
   const [activeHotspot, setActiveHotspot] = useState<PakistanStrategicPoint | null>(null);
 
@@ -94,6 +95,7 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const mode = (params.get('mode') || params.get('engine') || '').toLowerCase();
       if (mode === 'recon' || mode === 'gev' || mode === 'boost') {
+        setTargetReconView((prev) => prev || buildDefaultPakistanReconView());
         setHasMountedRecon(true);
         setEngineMode('recon');
       }
@@ -257,6 +259,7 @@ export default function Home() {
             type="button"
             onClick={() => {
               playScannerClick();
+              setTargetReconView((prev) => prev || buildDefaultPakistanReconView());
               setHasMountedRecon(true);
               setEngineMode('recon');
             }}
